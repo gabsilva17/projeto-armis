@@ -1,5 +1,6 @@
 import type { MonthSummary, TimesheetEntry } from '@/src/types/timesheets';
 import { FEATURES } from '@/src/constants/app.constants';
+import { adaptTimesheetEntries, type TimesheetEntryApi } from '../adapters/timesheetsAdapter';
 
 // ---------------------------------------------------------------------------
 // Static mock data — simulates what a real API would return.
@@ -7,7 +8,7 @@ import { FEATURES } from '@/src/constants/app.constants';
 // a real fetch() call to your API endpoint.
 // ---------------------------------------------------------------------------
 
-const MOCK_ENTRIES: TimesheetEntry[] = [
+const MOCK_API_ENTRIES: TimesheetEntryApi[] = [
   // February 2026
   { id: 'e001', date: '2026-02-02', project: 'ARMIS Platform',   task: 'Frontend development',  hours: 8, status: 'approved' },
   { id: 'e002', date: '2026-02-03', project: 'Client Portal',    task: 'Backend integration',   hours: 8, status: 'approved' },
@@ -88,12 +89,13 @@ export async function fetchAllTimesheets(): Promise<TimesheetEntry[]> {
   if (FEATURES.BACKEND_CONNECTED) {
     // TODO: replace with real API call
     // const response = await fetch('/api/timesheets');
-    // return response.json() as Promise<TimesheetEntry[]>;
+    // const apiEntries = (await response.json()) as TimesheetEntryApi[];
+    // return adaptTimesheetEntries(apiEntries);
     throw new Error('Backend not implemented yet');
   }
 
   await new Promise((resolve) => setTimeout(resolve, 400));
-  return [...MOCK_ENTRIES];
+  return adaptTimesheetEntries(MOCK_API_ENTRIES);
 }
 
 export { buildMonthSummary };

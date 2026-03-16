@@ -13,6 +13,7 @@ import { Colors, Spacing, Typography, useTheme } from '@/src/theme';
 import { useFinancesStore } from '@/src/stores/useFinancesStore';
 import type { ManualExpenseEntry, ManualExpenseForm } from '@/src/types/finances.types';
 import { CheckIcon, PlusIcon, XIcon, TrashIcon } from 'phosphor-react-native';
+import { EmptyState } from '@/src/components/ui/EmptyState';
 import { useSlideUpModalAnimation } from '@/src/hooks/useSlideUpModalAnimation';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -231,7 +232,7 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
               </View>
 
               <View style={[styles.fieldBlock, styles.currencyField]}>
-                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Currency<Text style={styles.requiredMark}> *</Text></Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Currency<Text style={styles.requiredMark}> *</Text></Text>
                 <SelectField
                   value={form.currency}
                   placeholder="EUR"
@@ -256,7 +257,7 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
             </View>
 
             <View style={styles.checkboxRow}>
-              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Expense in Representation of?</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Expense in Representation of?</Text>
               <Pressable
                 style={[styles.checkbox, { borderColor: colors.border, backgroundColor: colors.surface }, form.expenseRepresentation && [styles.checkboxChecked, { backgroundColor: colors.black, borderColor: colors.black }]]}
                 onPress={() =>
@@ -297,6 +298,10 @@ export function ManualInvoiceEntry() {
   const [editingEntry, setEditingEntry] = useState<ManualExpenseEntry | null>(null);
   const { entries, addEntry, updateEntry, deleteEntry } = useFinancesStore();
 
+  const totalValue = useMemo(() => {
+    return entries.reduce((acc, entry) => acc + (parseFloat(entry.unitValue) || 0), 0).toFixed(2);
+  }, [entries]);
+
   return (
     <View style={[styles.pageContainer, { backgroundColor: colors.background }]}> 
       <ScrollView
@@ -305,8 +310,18 @@ export function ManualInvoiceEntry() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.pageHeader}>
-          <Text style={[styles.pageTitle, { color: colors.textPrimary }]}>Manual Expenses</Text>
-          <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Manually register your expenses using the form below.</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={[styles.pageTitle, { color: colors.textPrimary }]}>Manual Expenses</Text>
+            <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Manually register your expenses using the form below.</Text>
+          </View>
+        </View>
+
+        <View style={styles.summaryBlock}>
+          <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Expenses</Text>
+          <View style={styles.summaryValueRow}>
+            <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{totalValue}</Text>
+            <Text style={[styles.summaryCurrency, { color: colors.textMuted }]}>EUR</Text>
+          </View>
         </View>
 
         <Button
@@ -317,27 +332,54 @@ export function ManualInvoiceEntry() {
         />
 
         <View style={styles.entriesSection}>
-          <Text style={[styles.entriesTitle, { color: colors.textSecondary }]}>Recent entries</Text>
+          <View style={styles.entriesHeader}>
+            <Text style={[styles.entriesTitle, { color: colors.textSecondary }]}>Recent entries</Text>
+            {entries.length > 0 && (
+              <Text style={[styles.entriesCount, { color: colors.textMuted }]}>{entries.length}</Text>
+            )}
+          </View>
 
           {entries.length === 0 ? (
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No expenses submitted yet.</Text>
+            <View style={styles.emptyStateContainer}>
+              <EmptyState 
+                icon={null} 
+                title="No expenses yet" 
+                subtitle="Your manually added expenses will appear here." 
+              />
+            </View>
           ) : (
-            entries.map((entry) => (
-              <TouchableOpacity
-                key={entry.id}
-                style={[styles.entryRow, { borderBottomColor: colors.border }]}
-                onPress={() => setEditingEntry(entry)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Edit expense ${entry.expenseType || 'Expense'}`}
-              >
-                <View style={styles.entryTextBlock}>
-                  <Text style={[styles.entryPrimary, { color: colors.textPrimary }]}>{entry.expenseType || 'Expense'}</Text>
-                  <Text style={[styles.entrySecondary, { color: colors.textSecondary }]}>{entry.productiveProject} • {entry.date}</Text>
-                </View>
-                <Text style={[styles.entryAmount, { color: colors.textPrimary }]}>{entry.unitValue} {entry.currency}</Text>
-              </TouchableOpacity>
-            ))
+            <View style={[styles.entriesList, { borderTopColor: colors.border }]}> 
+              {entries.map((entry) => (
+                <TouchableOpacity
+                  key={entry.id}
+                  style={[styles.entryRow, { borderBottomColor: colors.border }]}
+                  onPress={() => setEditingEntry(entry)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit expense ${entry.expenseType || 'Expense'}`}
+                >
+                  <View style={[styles.entryStatusBar, { backgroundColor: colors.black }]} />
+
+                  <View style={styles.entryInfo}>
+                    <Text style={[styles.entryTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                      {entry.expenseType || 'Expense'}
+                    </Text>
+                    <Text style={[styles.entrySubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {entry.productiveProject}
+                    </Text>
+                  </View>
+
+                  <View style={styles.entryRight}>
+                    <Text style={[styles.entryAmount, { color: colors.textPrimary }]} numberOfLines={1}>
+                      {entry.unitValue} {entry.currency}
+                    </Text>
+                    <Text style={[styles.entryDate, { color: colors.textMuted }]} numberOfLines={1}>
+                      {entry.date}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -376,21 +418,62 @@ const styles = StyleSheet.create({
     gap: Spacing[5],
   },
   pageHeader: {
-    gap: Spacing[2],
+    flexDirection: 'row',
+    gap: Spacing[4],
+    marginBottom: Spacing[2],
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
+    gap: 2,
+    justifyContent: 'center',
   },
   pageTitle: {
-    fontSize: Typography.size.xl,
+    fontSize: Typography.size['2xl'],
     fontFamily: Typography.fontFamily.bold,
     color: Colors.textPrimary,
+    letterSpacing: -0.5,
   },
   pageSubtitle: {
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.regular,
     color: Colors.textSecondary,
+    lineHeight: 22,
+  },
+  summaryBlock: {
+    gap: 4,
+    marginBottom: Spacing[2],
+  },
+  summaryLabel: {
+    fontSize: Typography.size.sm,
+    fontFamily: Typography.fontFamily.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  summaryValue: {
+    fontSize: Typography.size['3xl'],
+    fontFamily: Typography.fontFamily.bold,
+  },
+  summaryCurrency: {
+    fontSize: Typography.size.base,
+    fontFamily: Typography.fontFamily.semibold,
+    marginBottom: 4,
   },
   entriesSection: {
-    gap: Spacing[3],
-    marginTop: Spacing[2],
+    gap: Spacing[4],
+    marginTop: Spacing[4],
+    flex: 1,
+  },
+  entriesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing[1],
   },
   entriesTitle: {
     fontSize: Typography.size.sm,
@@ -399,38 +482,53 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.7,
   },
-  emptyText: {
+  entriesCount: {
     fontSize: Typography.size.sm,
-    color: Colors.textMuted,
-    paddingVertical: Spacing[2],
+    fontFamily: Typography.fontFamily.medium,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    minHeight: 200,
+    justifyContent: 'center',
+  },
+  entriesList: {
+    borderTopWidth: 1,
   },
   entryRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-    paddingVertical: Spacing[3],
-    gap: Spacing[4],
+    gap: Spacing[3],
+    paddingVertical: Spacing[4],
+    borderBottomWidth: 1,
   },
-  entryTextBlock: {
+  entryStatusBar: {
+    width: 3,
+    height: 28,
+    borderRadius: 2,
+  },
+  entryInfo: {
     flex: 1,
-    gap: Spacing[1],
+    gap: 3,
   },
-  entryPrimary: {
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textPrimary,
-  },
-  entrySecondary: {
+  entryTitle: {
     fontSize: Typography.size.sm,
-    fontFamily: Typography.fontFamily.regular,
-    color: Colors.textSecondary,
+    fontFamily: Typography.fontFamily.semibold,
+  },
+  entrySubtitle: {
+    fontSize: Typography.size.xs,
+  },
+  entryRight: {
+    alignItems: 'flex-end',
+    gap: 3,
+    maxWidth: 130,
   },
   entryAmount: {
-    fontSize: Typography.size.sm,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textPrimary,
+    fontSize: Typography.size.base,
+    fontFamily: Typography.fontFamily.bold,
+  },
+  entryDate: {
+    fontSize: Typography.size.xs,
+    fontFamily: Typography.fontFamily.medium,
   },
 
   backdrop: {

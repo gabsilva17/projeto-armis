@@ -36,7 +36,7 @@ export function SelectField({
   return (
     <View style={styles.fieldBlock}>
       {hasLabel ? (
-        <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
           {label}
           {required ? <Text style={[styles.requiredMark, { color: colors.error }]}> *</Text> : null}
         </Text>
