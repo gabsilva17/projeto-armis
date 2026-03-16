@@ -11,11 +11,7 @@ export default function HomeScreen() {
   const [, forceRender] = useReducer((value: number) => value + 1, 0);
   const { greeting, messageOfDay } = useGreeting();
   const router = useRouter();
-  const today = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(new Date());
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const handleRefresh = useCallback(() => {
     forceRender();
@@ -30,15 +26,12 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.greetingSection}>
-        <Text style={styles.kicker}>ARMINI WORKSPACE</Text>
+        <Text style={styles.kicker}>ARMIS DIGITAL HUB</Text>
         <Text style={styles.greeting}>{greeting}</Text>
         <Text style={styles.subtitle}>{messageOfDay}</Text>
       </View>
 
-      <View style={styles.focusBand}>
-        <Ionicons name="sparkles-outline" size={18} color={Colors.textInverse} />
-        <Text style={styles.focusText}>Today is {today}</Text>
-      </View>
+      <Text style={styles.todayLabel}>{today}</Text>
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Start</Text>
@@ -112,21 +105,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 22,
   },
-  focusBand: {
-    marginTop: Spacing[5],
-    backgroundColor: Colors.black,
-    borderRadius: 999,
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[2],
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[2],
-  },
-  focusText: {
-    color: Colors.textInverse,
+  todayLabel: {
+    marginTop: Spacing[4],
     fontSize: Typography.size.sm,
     fontFamily: Typography.fontFamily.medium,
+    color: Colors.textMuted,
   },
   sectionHeader: {
     marginTop: Spacing[6],

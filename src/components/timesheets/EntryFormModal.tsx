@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CopySimpleIcon, TrashIcon, XIcon } from 'phosphor-react-native';
+import { CaretDownIcon, CheckIcon, CopySimpleIcon, TrashIcon, XIcon } from 'phosphor-react-native';
 import { ALL_STATUSES, STATUS_LABELS } from './timesheetsConstants';
 
 interface EntryFormModalProps {
@@ -42,12 +42,14 @@ export function EntryFormModal({
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<EntryInput>(initial);
   const [mounted, setMounted] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const slideY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       setForm(initial);
+      setStatusOpen(false);
       setMounted(true);
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -144,6 +146,7 @@ export function EntryFormModal({
                 onChangeText={(v) => setForm((f) => ({ ...f, project: v }))}
                 placeholder="e.g. ARMIS Platform"
                 placeholderTextColor={Colors.textMuted}
+                returnKeyType="next"
               />
             </View>
 
@@ -155,6 +158,7 @@ export function EntryFormModal({
                 onChangeText={(v) => setForm((f) => ({ ...f, task: v }))}
                 placeholder="e.g. Frontend development"
                 placeholderTextColor={Colors.textMuted}
+                returnKeyType="next"
               />
             </View>
 
@@ -171,25 +175,39 @@ export function EntryFormModal({
                 keyboardType="decimal-pad"
                 placeholder="8"
                 placeholderTextColor={Colors.textMuted}
+                returnKeyType="done"
               />
             </View>
 
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Status</Text>
-              <View style={styles.statusRow}>
-                {ALL_STATUSES.map((s) => (
-                  <TouchableOpacity
-                    key={s}
-                    style={[styles.statusChip, form.status === s && styles.statusChipActive]}
-                    onPress={() => setForm((f) => ({ ...f, status: s }))}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[styles.statusChipText, form.status === s && styles.statusChipTextActive]}>
-                      {STATUS_LABELS[s]}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <TouchableOpacity
+                style={styles.statusTrigger}
+                onPress={() => setStatusOpen((o) => !o)}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+              >
+                <Text style={styles.statusTriggerText}>{STATUS_LABELS[form.status]}</Text>
+                <CaretDownIcon size={15} color={Colors.textMuted} style={statusOpen && styles.caretOpen} />
+              </TouchableOpacity>
+
+              {statusOpen && (
+                <View style={styles.dropdown}>
+                  {ALL_STATUSES.map((s, i) => (
+                    <TouchableOpacity
+                      key={s}
+                      style={[styles.dropdownItem, i < ALL_STATUSES.length - 1 && styles.dropdownItemBorder]}
+                      onPress={() => { setForm((f) => ({ ...f, status: s })); setStatusOpen(false); }}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[styles.dropdownItemText, form.status === s && styles.dropdownItemTextActive]}>
+                        {STATUS_LABELS[s]}
+                      </Text>
+                      {form.status === s && <CheckIcon size={15} color={Colors.textPrimary} weight="bold" />}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -276,32 +294,56 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   input: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3],
+    borderBottomWidth: StyleSheet.hairlineWidth * 2,
+    borderBottomColor: Colors.border,
+    paddingVertical: Spacing[2] + 2,
     fontSize: Typography.size.base,
+    fontFamily: Typography.fontFamily.regular,
     color: Colors.textPrimary,
   },
-  statusRow: { flexDirection: 'row', gap: Spacing[2] },
-  statusChip: {
-    flex: 1,
-    paddingVertical: Spacing[2] + 2,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  statusTrigger: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    justifyContent: 'space-between',
+    borderBottomWidth: StyleSheet.hairlineWidth * 2,
+    borderBottomColor: Colors.border,
+    paddingVertical: Spacing[2] + 2,
   },
-  statusChipActive: { backgroundColor: Colors.black, borderColor: Colors.black },
-  statusChipText: {
-    fontSize: Typography.size.xs,
-    fontFamily: Typography.fontFamily.medium,
+  statusTriggerText: {
+    fontSize: Typography.size.base,
+    fontFamily: Typography.fontFamily.regular,
+    color: Colors.textPrimary,
+  },
+  caretOpen: { transform: [{ rotate: '180deg' }] },
+  dropdown: {
+    marginTop: Spacing[2],
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[3],
+  },
+  dropdownItemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  dropdownItemText: {
+    fontSize: Typography.size.base,
+    fontFamily: Typography.fontFamily.regular,
     color: Colors.textSecondary,
   },
-  statusChipTextActive: { color: Colors.white },
+  dropdownItemTextActive: {
+    color: Colors.textPrimary,
+    fontFamily: Typography.fontFamily.medium,
+  },
+  // Bottom nav
   bottomNav: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.border,

@@ -6,17 +6,17 @@ import { useChatStore } from '@/src/stores/useChatStore';
 import { useChatAnimation } from '@/src/hooks/useChatAnimation';
 import { getDefaultSuggestions, getChatGreeting } from '@/src/services/chat/chatService';
 import { DotsThreeVerticalIcon, XIcon } from 'phosphor-react-native';
-import { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import {
   Animated,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   StyleSheet,
   TouchableOpacity,
   View,
 } from 'react-native';
+import ReAnimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboard } from '@/src/hooks/useKeyboard';
 
 export interface ChatHandle {
   open: (originX: number, originY: number) => void;
@@ -27,11 +27,20 @@ interface ChatBubbleContainerProps {
 }
 
 export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerProps>(function ChatBubbleContainer({ onOpenChange }, ref) {
-  const { messages, isLoading, sendMessage, clearMessages } = useChatStore();
+  const { messages, isLoading, sendMessage, sendMessageWithImage, clearMessages } = useChatStore();
   const insets = useSafeAreaInsets();
   const chatGreeting = useMemo(() => getChatGreeting(), []);
   const suggestions = useMemo(() => getDefaultSuggestions(), []);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const { keyboardHeight } = useKeyboard();
+  const bottomInset = useSharedValue(insets.bottom);
+  useEffect(() => {
+    bottomInset.value = insets.bottom;
+  }, [insets.bottom, bottomInset]);
+  const spacerStyle = useAnimatedStyle(() => ({
+    height: keyboardHeight.value > 0 ? keyboardHeight.value : bottomInset.value,
+  }));
 
   const {
     chatMounted,
@@ -103,11 +112,8 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
             </TouchableOpacity>
           </View>
 
-          {/* Body — KAV works correctly inside a Modal without overflow:hidden conflict */}
-          <KeyboardAvoidingView
-            style={styles.body}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-          >
+          {/* Body */}
+          <View style={styles.body}>
             <ChatMessageList
               messages={messages}
               isLoading={isLoading}
@@ -116,10 +122,9 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
               suggestions={suggestions}
               onSuggestionSelect={sendMessage}
             />
-            <View style={{ paddingBottom: insets.bottom }}>
-              <ChatInput onSend={sendMessage} disabled={isLoading} />
-            </View>
-          </KeyboardAvoidingView>
+            <ChatInput onSend={sendMessage} onSendImage={sendMessageWithImage} disabled={isLoading} />
+            <ReAnimated.View style={spacerStyle} />
+          </View>
 
           {/* Options dropdown */}
           <ChatDropdownMenu
@@ -137,9 +142,8 @@ const styles = StyleSheet.create({
   expandContainer: {
     position: 'absolute',
     backgroundColor: Colors.background,
-    // overflow: 'hidden' removed — it conflicted with KeyboardAvoidingView inside the Modal.
-    // Safe to remove: chatContent opacity is 0 during the expand animation,
-    // so child content is never visible outside the animating border radius.
+    // overflow: 'hidden' removido — chatContent opacity é 0 durante a animação de expansão,
+    // por isso o conteúdo filho nunca é visível fora do border radius animado.
   },
   chatContent: {
     flex: 1,
@@ -162,5 +166,6 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+    paddingBottom: 55,
   },
 });

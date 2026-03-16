@@ -3,6 +3,7 @@ export type Sender = 'user' | 'ai';
 export interface Message {
   id: string;
   content: string;
+  imageUri?: string;
   sender: Sender;
   timestamp: Date;
 }

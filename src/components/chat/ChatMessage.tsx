@@ -1,6 +1,6 @@
 import { Colors, Spacing, Typography } from '@/src/theme';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Markdown from 'react-native-markdown-display';
 import type { Message } from '@/src/types/chat.types';
@@ -12,53 +12,64 @@ interface ChatMessageProps {
 export const ChatMessage = React.memo(function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.sender === 'user';
 
+  if (isUser) {
+    return (
+      <Animated.View
+        entering={FadeInDown.duration(200).springify()}
+        style={styles.containerUser}
+      >
+        <View
+          style={styles.bubbleUser}
+          accessibilityRole="text"
+          accessibilityLabel={`You: ${message.content || 'Image'}`}
+        >
+          {message.imageUri && (
+            <Image source={{ uri: message.imageUri }} style={styles.messageImage} resizeMode="cover" />
+          )}
+          {message.content ? <Text style={styles.textUser}>{message.content}</Text> : null}
+        </View>
+      </Animated.View>
+    );
+  }
+
   return (
     <Animated.View
       entering={FadeInDown.duration(200).springify()}
-      style={[styles.container, isUser ? styles.containerUser : styles.containerAI]}
+      style={styles.containerAI}
+      accessibilityRole="text"
+      accessibilityLabel={`Assistant: ${message.content}`}
     >
-      <View
-        style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAI]}
-        accessibilityRole="text"
-        accessibilityLabel={`${isUser ? 'You' : 'Assistant'}: ${message.content}`}
-      >
-        {isUser ? (
-          <Text style={styles.textUser}>{message.content}</Text>
-        ) : (
-          <Markdown style={markdownStyles}>{message.content}</Markdown>
-        )}
-      </View>
+      <Markdown style={markdownStyles}>{message.content}</Markdown>
     </Animated.View>
   );
 });
 
 const styles = StyleSheet.create({
-  container: {
+  containerUser: {
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[1],
-    maxWidth: '100%',
-  },
-  containerUser: {
     alignItems: 'flex-end',
   },
   containerAI: {
-    alignItems: 'flex-start',
-  },
-  bubble: {
-    maxWidth: '80%',
-    borderRadius: 18,
     paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3],
+    paddingVertical: Spacing[1],
   },
   bubbleUser: {
-    backgroundColor: Colors.bubbleUser,
+    maxWidth: '80%',
+    borderRadius: 18,
     borderBottomRightRadius: 4,
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[3],
+    backgroundColor: Colors.bubbleUser,
+    overflow: 'hidden',
   },
-  bubbleAI: {
-    backgroundColor: Colors.bubbleAI,
-    borderWidth: 1,
-    borderColor: Colors.bubbleAIBorder,
-    borderBottomLeftRadius: 4,
+  messageImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 10,
+    marginBottom: Spacing[2],
+    marginHorizontal: -Spacing[4],
+    marginTop: -Spacing[3],
   },
   textUser: {
     fontSize: Typography.size.base,
@@ -67,10 +78,10 @@ const styles = StyleSheet.create({
   },
 });
 
-// Markdown styles for AI bubbles
+// Markdown styles for AI responses (rendered directly on background)
 const markdownStyles = StyleSheet.create({
   body: {
-    color: Colors.bubbleAIText,
+    color: Colors.textPrimary,
     fontSize: Typography.size.base,
     lineHeight: Typography.size.base * Typography.lineHeight.normal,
   },
@@ -80,30 +91,30 @@ const markdownStyles = StyleSheet.create({
   },
   strong: {
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.bubbleAIText,
+    color: Colors.textPrimary,
   },
   em: {
     fontStyle: 'italic',
-    color: Colors.bubbleAIText,
+    color: Colors.textPrimary,
   },
   heading1: {
     fontSize: Typography.size.lg,
     fontFamily: Typography.fontFamily.bold,
-    color: Colors.bubbleAIText,
+    color: Colors.textPrimary,
     marginBottom: Spacing[2],
     marginTop: Spacing[2],
   },
   heading2: {
     fontSize: Typography.size.md,
     fontFamily: Typography.fontFamily.bold,
-    color: Colors.bubbleAIText,
+    color: Colors.textPrimary,
     marginBottom: Spacing[1],
     marginTop: Spacing[2],
   },
   heading3: {
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.bubbleAIText,
+    color: Colors.textPrimary,
     marginBottom: Spacing[1],
     marginTop: Spacing[2],
   },
@@ -118,13 +129,13 @@ const markdownStyles = StyleSheet.create({
     flexDirection: 'row',
   },
   bullet_list_icon: {
-    color: Colors.bubbleAIText,
+    color: Colors.textPrimary,
     fontSize: Typography.size.base,
     lineHeight: Typography.size.base * Typography.lineHeight.normal,
     marginRight: Spacing[2],
   },
   ordered_list_icon: {
-    color: Colors.bubbleAIText,
+    color: Colors.textPrimary,
     fontSize: Typography.size.base,
     lineHeight: Typography.size.base * Typography.lineHeight.normal,
     marginRight: Spacing[2],
