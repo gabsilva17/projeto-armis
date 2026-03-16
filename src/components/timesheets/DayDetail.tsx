@@ -79,7 +79,7 @@ export function DayDetail({ daySummary, date, onClose, onAdd, onEdit }: DayDetai
       </View>
 
       {entries.length === 0 ? (
-        <Text style={[styles.emptyEntries, { color: colors.textMuted }]}>No entries yet. Tap + to add one.</Text>
+        <Text style={[styles.emptyEntries, { color: colors.textMuted }]}>No work this day, phew.</Text>
       ) : (
         <Animated.View layout={LinearTransition.duration(200)} style={[styles.entriesList, { borderTopColor: colors.border }]}>
           {entries.map((entry) => (

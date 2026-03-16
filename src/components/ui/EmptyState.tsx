@@ -4,7 +4,7 @@ import { FileIcon, type Icon } from 'phosphor-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 interface EmptyStateProps {
-  icon?: Icon;
+  icon?: Icon | null;
   title: string;
   subtitle?: string;
 }
@@ -13,7 +13,7 @@ export function EmptyState({ icon: Icon = FileIcon, title, subtitle }: EmptyStat
   const colors = useTheme();
   return (
     <View style={styles.container}>
-      <Icon size={48} color={colors.gray300} />
+      {Icon !== null && <Icon size={48} color={colors.gray300} />}
       <Text style={[styles.title, { color: colors.textMuted }]}>{title}</Text>
       {subtitle ? <Text style={[styles.subtitle, { color: colors.gray400 }]}>{subtitle}</Text> : null}
     </View>

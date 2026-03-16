@@ -1,6 +1,11 @@
 import { DEFAULT_SUGGESTIONS } from '../../constants/suggestions';
 import { DEFAULT_IMAGE_ANALYSIS_PROMPT, MESSAGES_OF_DAY } from '../../constants/chat.constants';
-import { callClaude, type AnthropicMessage, type ContentBlock } from '../api/anthropic';
+import { callClaude, type AnthropicMessage } from '../api/anthropic';
+import {
+  adaptAnthropicTextToAiMessage,
+  adaptHistoryToAnthropicMessages,
+  createImagePromptContent,
+} from '../adapters/chatAdapter';
 import type { Message, SuggestionChip } from '../../types/chat.types';
 
 export function getDailyGreeting(userName: string): string {
@@ -30,33 +35,16 @@ export async function sendMessageWithImage(
   text: string,
   history: Message[],
 ): Promise<Message> {
-  const imageContent: ContentBlock[] = [
-    {
-      type: 'image',
-      source: { type: 'base64', media_type: 'image/jpeg', data: base64 },
-    },
-    {
-      type: 'text',
-      text: text.trim() || DEFAULT_IMAGE_ANALYSIS_PROMPT,
-    },
-  ];
+  const imageContent = createImagePromptContent(base64, text, DEFAULT_IMAGE_ANALYSIS_PROMPT);
 
   const anthropicMessages: AnthropicMessage[] = [
-    ...history.map((m) => ({
-      role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
-      content: m.content,
-    })),
+    ...adaptHistoryToAnthropicMessages(history),
     { role: 'user' as const, content: imageContent },
   ];
 
   const responseText = await callClaude(anthropicMessages);
 
-  return {
-    id: `ai-${Date.now()}`,
-    content: responseText,
-    sender: 'ai',
-    timestamp: new Date(),
-  };
+  return adaptAnthropicTextToAiMessage(responseText);
 }
 
 export async function sendMessage(
@@ -64,19 +52,11 @@ export async function sendMessage(
   history: Message[],
 ): Promise<Message> {
   const anthropicMessages: AnthropicMessage[] = [
-    ...history.map((m) => ({
-      role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
-      content: m.content,
-    })),
+    ...adaptHistoryToAnthropicMessages(history),
     { role: 'user', content },
   ];
 
   const responseText = await callClaude(anthropicMessages);
 
-  return {
-    id: `ai-${Date.now()}`,
-    content: responseText,
-    sender: 'ai',
-    timestamp: new Date(),
-  };
+  return adaptAnthropicTextToAiMessage(responseText);
 }

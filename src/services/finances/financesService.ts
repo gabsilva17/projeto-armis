@@ -1,5 +1,9 @@
 import type { InvoiceData, InvoiceSubmission, SubmissionResult } from '../../types/finances.types';
-import { callClaude, type ContentBlock } from '../api/anthropic';
+import { callClaude } from '../api/anthropic';
+import {
+  adaptInvoiceExtractionResponse,
+  createInvoicePromptContent,
+} from '../adapters/financesAdapter';
 
 const INVOICE_PROMPT = `Analyze this image thoroughly. It could be an invoice, receipt, ticket, document, menu, label, screenshot, or any other type of photo.
 
@@ -23,65 +27,13 @@ Rules:
 - The "summary" field should always be filled — describe what you see.
 - Return ONLY the JSON, no other text.`;
 
-function parseInvoiceResponse(text: string): InvoiceData {
-  try {
-    // Extract JSON from the response (handle potential markdown code blocks)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON found');
-
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    return {
-      vendor: parsed.vendor ?? null,
-      invoiceNumber: parsed.invoiceNumber ?? null,
-      date: parsed.date ?? null,
-      totalAmount: parsed.totalAmount ?? null,
-      currency: parsed.currency ?? null,
-      taxAmount: parsed.taxAmount ?? null,
-      lineItems: Array.isArray(parsed.lineItems)
-        ? parsed.lineItems.map((item: { description?: string; amount?: string }) => ({
-            description: item.description ?? '',
-            amount: item.amount ?? '',
-          }))
-        : [],
-      summary: parsed.summary ?? null,
-      rawText: text,
-    };
-  } catch {
-    return {
-      vendor: null,
-      invoiceNumber: null,
-      date: null,
-      totalAmount: null,
-      currency: null,
-      taxAmount: null,
-      lineItems: [],
-      summary: null,
-      rawText: text,
-    };
-  }
-}
-
 export async function submitInvoice(
   submission: InvoiceSubmission,
 ): Promise<SubmissionResult> {
-  const content: ContentBlock[] = [
-    {
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: 'image/jpeg',
-        data: submission.photoBase64,
-      },
-    },
-    {
-      type: 'text',
-      text: INVOICE_PROMPT,
-    },
-  ];
+  const content = createInvoicePromptContent(submission.photoBase64, INVOICE_PROMPT);
 
   const responseText = await callClaude([{ role: 'user', content }]);
-  const invoiceData = parseInvoiceResponse(responseText);
+  const invoiceData: InvoiceData = adaptInvoiceExtractionResponse(responseText);
 
   return {
     success: true,
