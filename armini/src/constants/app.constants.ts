@@ -16,3 +16,11 @@ export const ROUTES = {
   WHISTLEBLOW: '/(main)/whistleblow' as const,
   SETTINGS: '/(main)/settings' as const,
 } as const;
+
+export const MAIN_ROUTE_ORDER = [
+  ROUTES.HOME,
+  ROUTES.FINANCES,
+  ROUTES.TIMESHEETS,
+  ROUTES.WHISTLEBLOW,
+  ROUTES.SETTINGS,
+] as const;

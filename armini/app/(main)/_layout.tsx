@@ -5,19 +5,19 @@ import { ChatBubbleContainer, type ChatHandle } from '@/src/components/chat/Chat
 import { RefreshProvider, useRefresh } from '@/src/contexts/RefreshContext';
 import { useSidebarStore } from '@/src/stores/useSidebarStore';
 import { useTheme } from '@/src/theme';
+import { MAIN_ROUTE_ORDER } from '@/src/constants/app.constants';
+import { ANIMATION_DURATIONS, EASING } from '@/src/constants/animation.constants';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { Easing, withTiming } from 'react-native-reanimated';
+import Animated, { withTiming } from 'react-native-reanimated';
 import type { EntryAnimationsValues } from 'react-native-reanimated';
 
-const ROUTES = ['/home', '/finances', '/timesheets', '/whistleblow', '/settings'];
 const SLIDE_OFFSET = 80;
-const ANIM_DURATION = 300;
 
 function getRouteIndex(path: string) {
-  const idx = ROUTES.findIndex((r) => path.includes(r));
+  const idx = MAIN_ROUTE_ORDER.findIndex((route) => path.includes(route));
   return idx === -1 ? 0 : idx;
 }
 
@@ -68,10 +68,10 @@ function MainLayoutInner() {
       },
       animations: {
         originX: withTiming(targetValues.targetOriginX, {
-          duration: ANIM_DURATION,
-          easing: Easing.out(Easing.cubic),
+          duration: ANIMATION_DURATIONS.pageSlide,
+          easing: EASING.outCubic,
         }),
-        opacity: withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) }),
+        opacity: withTiming(1, { duration: ANIMATION_DURATIONS.pageFade, easing: EASING.outCubic }),
       },
     };
   };

@@ -2,6 +2,8 @@
 // NOTE: The API key is exposed in the app bundle — fine for testing,
 // but in production this call should move to your MCP backend so the key stays server-side.
 
+import { ANTHROPIC_CONFIG } from '@/src/constants/llm.constants';
+
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
 const SYSTEM_PROMPT = `You are ARMINI, an AI companion for employees. Your role is to help them manage their work day — planning tasks, setting priorities, answering questions, and submitting expenses.
@@ -41,16 +43,16 @@ export interface AnthropicMessage {
 export async function callClaude(
   messages: AnthropicMessage[],
 ): Promise<string> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetch(ANTHROPIC_CONFIG.endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
+      'anthropic-version': ANTHROPIC_CONFIG.apiVersion,
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      model: ANTHROPIC_CONFIG.model,
+      max_tokens: ANTHROPIC_CONFIG.maxTokens,
       system: SYSTEM_PROMPT,
       messages,
     }),
