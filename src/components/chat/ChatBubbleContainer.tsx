@@ -12,6 +12,7 @@ import {
   Animated,
   Modal,
   StyleSheet,
+  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -29,7 +30,7 @@ interface ChatBubbleContainerProps {
 
 export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerProps>(function ChatBubbleContainer({ onOpenChange }, ref) {
   const colors = useTheme();
-  const { messages, isLoading, sendMessage, sendMessageWithImage, clearMessages } = useChatStore();
+  const { messages, isLoading, error, sendMessage, sendMessageWithImage, clearMessages, clearError } = useChatStore();
   const insets = useSafeAreaInsets();
   const chatGreeting = useMemo(() => getChatGreeting(), []);
   const suggestions = useMemo(() => getDefaultSuggestions(), []);
@@ -70,6 +71,10 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
   useImperativeHandle(ref, () => ({
     open: handleOpen,
   }));
+
+  const handleSuggestionSelect = (prompt: string) => {
+    void sendMessage(prompt);
+  };
 
   return (
     <Modal
@@ -117,13 +122,22 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
 
           {/* Body */}
           <View style={styles.body}>
+            {error ? (
+              <View style={[styles.errorBanner, { backgroundColor: colors.surface, borderColor: colors.error }]}> 
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+                <TouchableOpacity onPress={clearError} accessibilityRole="button" accessibilityLabel="Dismiss chat error">
+                  <Text style={[styles.errorDismiss, { color: colors.error }]}>Dismiss</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
             <ChatMessageList
               messages={messages}
               isLoading={isLoading}
               greeting={chatGreeting}
               messageOfDay=""
               suggestions={suggestions}
-              onSuggestionSelect={sendMessage}
+              onSuggestionSelect={handleSuggestionSelect}
             />
             <ChatInput onSend={sendMessage} onSendImage={sendMessageWithImage} disabled={isLoading} />
             <ReAnimated.View style={spacerStyle} />
@@ -168,5 +182,26 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     paddingBottom: 55,
+  },
+  errorBanner: {
+    marginHorizontal: Spacing[3],
+    marginTop: Spacing[2],
+    marginBottom: Spacing[1],
+    paddingVertical: Spacing[2],
+    paddingHorizontal: Spacing[3],
+    borderWidth: 1,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing[2],
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+  },
+  errorDismiss: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

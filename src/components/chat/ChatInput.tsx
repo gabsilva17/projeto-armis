@@ -1,4 +1,7 @@
 import { useTheme } from '@/src/theme';
+import { ANIMATION_DURATIONS, EASING } from '@/src/constants/animation.constants';
+import { IMAGE_PICKER_SHEET, IMAGE_UPLOAD_CONFIG } from '@/src/constants/image.constants';
+import { HIT_SLOP } from '@/src/constants/ui.constants';
 import { Shadows, Spacing, Typography } from '@/src/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowUpIcon, CameraIcon, ImagesIcon, PaperclipIcon, XIcon } from 'phosphor-react-native';
@@ -15,7 +18,6 @@ import {
   View,
 } from 'react-native';
 import Animated, {
-  Easing,
   FadeInUp,
   FadeOutDown,
   useAnimatedStyle,
@@ -24,14 +26,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 interface ChatInputProps {
-  onSend: (text: string) => void;
-  onSendImage?: (base64: string, uri: string, text: string) => void;
+  onSend: (text: string) => Promise<boolean>;
+  onSendImage?: (base64: string, uri: string, text: string) => Promise<boolean>;
   disabled?: boolean;
 }
-
-// Consistente com o padrão de animação do projeto (useChatAnimation, useCalendarAnimation)
-const EASE_OUT = Easing.out(Easing.cubic);
-const EASE_IN  = Easing.in(Easing.cubic);
 
 export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputProps) {
   const colors = useTheme();
@@ -48,15 +46,19 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
 
   const canSend = (text.trim().length > 0 || pendingImage !== null) && !disabled;
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!canSend) return;
     if (pendingImage) {
-      onSendImage?.(pendingImage.base64, pendingImage.uri, text.trim());
-      setPendingImage(null);
-      setText('');
+      const ok = await onSendImage?.(pendingImage.base64, pendingImage.uri, text.trim());
+      if (ok) {
+        setPendingImage(null);
+        setText('');
+      }
     } else {
-      onSend(text.trim());
-      setText('');
+      const ok = await onSend(text.trim());
+      if (ok) {
+        setText('');
+      }
     }
   };
 
@@ -71,9 +73,9 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
         }
       }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        quality: 0.85,
-        base64: true,
+        mediaTypes: IMAGE_UPLOAD_CONFIG.mediaTypes,
+        quality: IMAGE_UPLOAD_CONFIG.quality,
+        base64: IMAGE_UPLOAD_CONFIG.base64,
       });
       if (!result.canceled && result.assets[0]) {
         setPendingImage({ uri: result.assets[0].uri, base64: result.assets[0].base64 ?? '' });
@@ -94,9 +96,9 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
         }
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.85,
-        base64: true,
+        mediaTypes: IMAGE_UPLOAD_CONFIG.mediaTypes,
+        quality: IMAGE_UPLOAD_CONFIG.quality,
+        base64: IMAGE_UPLOAD_CONFIG.base64,
       });
       if (!result.canceled && result.assets[0]) {
         setPendingImage({ uri: result.assets[0].uri, base64: result.assets[0].base64 ?? '' });
@@ -109,7 +111,7 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
   const handleClipPress = () => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', 'Take Photo', 'Choose from Library'], cancelButtonIndex: 0 },
+        { options: [...IMAGE_PICKER_SHEET.options], cancelButtonIndex: IMAGE_PICKER_SHEET.cancelButtonIndex },
         (index) => {
           if (index === 1) takePhoto();
           if (index === 2) pickFromLibrary();
@@ -125,8 +127,8 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
       {/* Image preview strip */}
       {pendingImage && (
         <Animated.View
-          entering={FadeInUp.duration(200).easing(EASE_OUT)}
-          exiting={FadeOutDown.duration(160).easing(EASE_IN)}
+          entering={FadeInUp.duration(ANIMATION_DURATIONS.chatPreviewEnter).easing(EASING.outCubic)}
+          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.chatPreviewExit).easing(EASING.inCubic)}
           style={styles.previewRow}
         >
           <View style={styles.previewWrapper}>
@@ -134,7 +136,7 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
             <Pressable
               style={[styles.previewRemove, { backgroundColor: colors.black }]}
               onPress={() => setPendingImage(null)}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              hitSlop={HIT_SLOP.sm}
               accessibilityRole="button"
               accessibilityLabel="Remove image"
             >
@@ -147,8 +149,8 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
       {/* Inline attach menu — Android only */}
       {attachMenuOpen && (
         <Animated.View
-          entering={FadeInUp.duration(180).easing(EASE_OUT)}
-          exiting={FadeOutDown.duration(150).easing(EASE_IN)}
+          entering={FadeInUp.duration(ANIMATION_DURATIONS.chatAttachMenuEnter).easing(EASING.outCubic)}
+          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.chatAttachMenuExit).easing(EASING.inCubic)}
           style={[styles.attachMenu, { borderBottomColor: colors.border }]}
         >
           <Pressable
@@ -177,10 +179,10 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
       <View style={styles.row}>
         <Pressable
           onPress={handleClipPress}
-          onPressIn={() => { clipScale.value = withTiming(0.82, { duration: 80, easing: EASE_OUT }); }}
-          onPressOut={() => { clipScale.value = withTiming(1, { duration: 200, easing: EASE_OUT }); }}
+          onPressIn={() => { clipScale.value = withTiming(0.82, { duration: ANIMATION_DURATIONS.pressIn, easing: EASING.outCubic }); }}
+          onPressOut={() => { clipScale.value = withTiming(1, { duration: ANIMATION_DURATIONS.pressOut, easing: EASING.outCubic }); }}
           disabled={disabled}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={HIT_SLOP.md}
           accessibilityRole="button"
           accessibilityLabel="Attach image"
         >
@@ -202,17 +204,17 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
           multiline
           maxLength={2000}
           style={[styles.input, { color: colors.textPrimary }]}
-          onSubmitEditing={handleSend}
+          onSubmitEditing={() => { void handleSend(); }}
           blurOnSubmit={false}
           editable={!disabled}
           accessibilityLabel="Message input"
         />
 
         <Pressable
-          onPress={handleSend}
+          onPress={() => { void handleSend(); }}
           disabled={!canSend}
           style={styles.sendButton}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={HIT_SLOP.md}
           accessibilityRole="button"
           accessibilityLabel="Send message"
         >

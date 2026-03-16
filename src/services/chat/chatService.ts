@@ -1,4 +1,5 @@
 import { DEFAULT_SUGGESTIONS } from '../../constants/suggestions';
+import { DEFAULT_IMAGE_ANALYSIS_PROMPT, MESSAGES_OF_DAY } from '../../constants/chat.constants';
 import { callClaude, type AnthropicMessage, type ContentBlock } from '../api/anthropic';
 import type { Message, SuggestionChip } from '../../types/chat.types';
 
@@ -15,16 +16,6 @@ export function getChatGreeting(): string {
   if (hour < 17) return "How can I help you this afternoon?";
   return "How can I help you this evening?";
 }
-
-const MESSAGES_OF_DAY = [
-  "How can I help you today?",
-  "What would you like to accomplish?",
-  "Ready when you are.",
-  "Let's get things done.",
-  "What's on your mind?",
-  "Here to help. Just ask.",
-  "Your AI companion is ready.",
-];
 
 export function getMessageOfDay(): string {
   return MESSAGES_OF_DAY[new Date().getDate() % MESSAGES_OF_DAY.length];
@@ -46,7 +37,7 @@ export async function sendMessageWithImage(
     },
     {
       type: 'text',
-      text: text.trim() || 'Please analyze this image and tell me what you see.',
+      text: text.trim() || DEFAULT_IMAGE_ANALYSIS_PROMPT,
     },
   ];
 

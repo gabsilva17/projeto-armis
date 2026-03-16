@@ -1,10 +1,20 @@
 import { Button } from '@/src/components/ui/Button';
+import { DateField } from '@/src/components/ui/DateField';
+import { SelectField } from '@/src/components/ui/SelectField';
+import { TextField } from '@/src/components/ui/TextField';
+import {
+  CURRENCY_OPTIONS,
+  EXPENSE_TYPE_OPTIONS,
+  PARTNER_PROJECT_OPTIONS,
+  PRODUCTIVE_PROJECT_OPTIONS,
+} from '@/src/constants/formOptions.constants';
+import { HIT_SLOP } from '@/src/constants/ui.constants';
 import { Colors, Spacing, Typography, useTheme } from '@/src/theme';
 import { useFinancesStore } from '@/src/stores/useFinancesStore';
 import type { ManualExpenseEntry, ManualExpenseForm } from '@/src/types/finances.types';
-import { CheckIcon, CaretDownIcon, PlusIcon, XIcon, TrashIcon } from 'phosphor-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { CheckIcon, PlusIcon, XIcon, TrashIcon } from 'phosphor-react-native';
+import { useSlideUpModalAnimation } from '@/src/hooks/useSlideUpModalAnimation';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -15,16 +25,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const PRODUCTIVE_PROJECT_OPTIONS = ['Digital Hub', 'Internal R&D', 'ARMIS Platform'];
-const PARTNER_PROJECT_OPTIONS = ['None', 'Client Project A', 'Client Project B'];
-const EXPENSE_TYPE_OPTIONS = ['Travel', 'Meal', 'Accommodation', 'Office Supplies'];
-const CURRENCY_OPTIONS = ['EUR', 'USD', 'GBP'];
 
 const EMPTY_FORM: ManualExpenseForm = {
   date: '',
@@ -47,81 +51,6 @@ function formatDate(date: Date): string {
   return `${month}/${day}/${year}`;
 }
 
-interface SelectFieldProps {
-  label: string;
-  required?: boolean;
-  value: string;
-  placeholder: string;
-  options: string[];
-  helperText?: string;
-  onChange: (value: string) => void;
-}
-
-function SelectField({
-  label,
-  required,
-  value,
-  placeholder,
-  options,
-  helperText,
-  onChange,
-}: SelectFieldProps) {
-  const colors = useTheme();
-  const [open, setOpen] = useState(false);
-  const showLabel = label.trim().length > 0;
-
-  return (
-    <View style={styles.fieldBlock}>
-      {showLabel ? (
-        <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
-          {label}
-          {required ? <Text style={styles.requiredMark}> *</Text> : null}
-        </Text>
-      ) : null}
-
-      <TouchableOpacity
-        style={[styles.selectTrigger, { borderBottomColor: colors.border }]}
-        activeOpacity={0.75}
-        onPress={() => setOpen((current) => !current)}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-      >
-        <Text style={[styles.selectTriggerText, { color: colors.textPrimary }, !value && { color: colors.textMuted }]}>
-          {value || placeholder}
-        </Text>
-        <CaretDownIcon size={16} color={colors.textMuted} style={open && styles.caretOpen} />
-      </TouchableOpacity>
-
-      {open && (
-        <View style={[styles.selectMenu, { borderColor: colors.border, backgroundColor: colors.background }]}> 
-          {options.map((option, index) => {
-            const isSelected = option === value;
-            return (
-              <TouchableOpacity
-                key={option}
-                style={[
-                  styles.selectItem,
-                  index < options.length - 1 && [styles.selectItemBorder, { borderBottomColor: colors.border }],
-                ]}
-                onPress={() => {
-                  onChange(option === 'None' ? '' : option);
-                  setOpen(false);
-                }}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.selectItemText, { color: colors.textSecondary }, isSelected && [styles.selectItemTextActive, { color: colors.textPrimary }]]}>{option}</Text>
-                {isSelected ? <CheckIcon size={14} weight="bold" color={colors.textPrimary} /> : null}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
-
-      {helperText ? <Text style={[styles.helperText, { color: colors.textMuted }]}>{helperText}</Text> : null}
-    </View>
-  );
-}
-
 interface ManualInvoiceModalProps {
   visible: boolean;
   onClose: () => void;
@@ -133,14 +62,13 @@ interface ManualInvoiceModalProps {
 function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }: ManualInvoiceModalProps) {
   const colors = useTheme();
   const insets = useSafeAreaInsets();
-  const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState<ManualExpenseForm>(EMPTY_FORM);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const isEditMode = !!initialEntry;
-
-  const slideY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const { mounted, slideY, backdropOpacity, animateClose } = useSlideUpModalAnimation({
+    visible,
+    screenHeight: SCREEN_HEIGHT,
+  });
 
   const isSaveDisabled = useMemo(() => {
     return (
@@ -165,44 +93,13 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
       } else {
         setSelectedDate(new Date());
       }
-      setShowDatePicker(false);
-      setMounted(true);
     }
   }, [visible, initialEntry]);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    if (visible) {
-      slideY.setValue(SCREEN_HEIGHT);
-      backdropOpacity.setValue(0);
-      Animated.parallel([
-        Animated.timing(backdropOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(slideY, {
-          toValue: 0,
-          damping: 26,
-          stiffness: 230,
-          mass: 0.85,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [mounted, visible, backdropOpacity, slideY]);
-
-  const closeAnimated = (callback: () => void) => {
-    Animated.parallel([
-      Animated.timing(backdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(slideY, { toValue: SCREEN_HEIGHT, duration: 260, useNativeDriver: true }),
-    ]).start(() => {
-      setMounted(false);
-      callback();
-    });
-  };
-
-  const handleCancel = () => closeAnimated(onClose);
+  const handleCancel = () => animateClose(onClose);
 
   const handleFillRandom = () => {
-    const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+    const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
     const randomDate = new Date(Date.now() - Math.floor(Math.random() * 90) * 86400000);
     setSelectedDate(randomDate);
     setForm({
@@ -221,16 +118,10 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
   const handleSave = () => {
     if (isSaveDisabled) return;
     onSave(form);
-    closeAnimated(onClose);
+    animateClose(onClose);
   };
 
-  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-
-    if (event.type === 'dismissed' || !date) return;
-
+  const handleDateChange = (date: Date) => {
     setSelectedDate(date);
     setForm((current) => ({ ...current, date: formatDate(date) }));
   };
@@ -246,7 +137,7 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
           <TouchableOpacity
             style={styles.headerIconBtn}
             onPress={handleCancel}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={HIT_SLOP.md}
             accessibilityRole="button"
             accessibilityLabel="Close modal"
           >
@@ -277,49 +168,15 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Date<Text style={styles.requiredMark}> *</Text></Text>
-              <TouchableOpacity
-                style={[styles.inputPressable, { borderBottomColor: colors.border }]}
-                onPress={() => setShowDatePicker(true)}
-                activeOpacity={0.75}
-                accessibilityRole="button"
-                accessibilityLabel="Select expense date"
-              >
-                <Text style={[styles.selectTriggerText, { color: colors.textPrimary }, !form.date && { color: colors.textMuted }]}>
-                  {form.date || 'mm/dd/yyyy'}
-                </Text>
-              </TouchableOpacity>
-
-              {showDatePicker && Platform.OS === 'ios' ? (
-                <View style={[styles.iosDatePickerWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}> 
-                  <DateTimePicker
-                    value={selectedDate}
-                    mode="date"
-                    display="spinner"
-                    onChange={handleDateChange}
-                  />
-                  <TouchableOpacity
-                    style={styles.iosDatePickerDoneBtn}
-                    onPress={() => setShowDatePicker(false)}
-                    activeOpacity={0.75}
-                    accessibilityRole="button"
-                    accessibilityLabel="Confirm date"
-                  >
-                    <Text style={[styles.iosDatePickerDoneText, { color: colors.textPrimary }]}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-
-              {showDatePicker && Platform.OS === 'android' ? (
-                <DateTimePicker
-                  value={selectedDate}
-                  mode="date"
-                  display="default"
-                  onChange={handleDateChange}
-                />
-              ) : null}
-            </View>
+            <DateField
+              label="Date"
+              required
+              value={form.date}
+              placeholder="mm/dd/yyyy"
+              selectedDate={selectedDate}
+              accessibilityLabel="Select expense date"
+              onChangeDate={handleDateChange}
+            />
 
             <SelectField
               label="Productive Project"
@@ -337,6 +194,7 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
               placeholder="Select..."
               options={PARTNER_PROJECT_OPTIONS}
               helperText="Fill in only if the expense belongs to a partner company."
+              optionToValue={(option) => (option === 'None' ? '' : option)}
               onChange={(value) => setForm((current) => ({ ...current, partnerProject: value }))}
             />
 
@@ -350,53 +208,50 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
             />
 
             <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Quantity<Text style={styles.requiredMark}> *</Text></Text>
-              <TextInput
-                style={[styles.input, { borderBottomColor: colors.border, color: colors.textPrimary }]}
+              <TextField
+                label="Quantity"
+                required
                 value={form.quantity}
                 onChangeText={(value) => setForm((current) => ({ ...current, quantity: value }))}
                 placeholder="1"
                 keyboardType="number-pad"
-                placeholderTextColor={colors.textMuted}
               />
             </View>
 
             <View style={styles.rowFields}>
               <View style={[styles.fieldBlock, styles.flexOne]}>
-                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Unit Value<Text style={styles.requiredMark}> *</Text></Text>
-                <TextInput
-                  style={[styles.input, { borderBottomColor: colors.border, color: colors.textPrimary }]}
+                <TextField
+                  label="Unit Value"
+                  required
                   value={form.unitValue}
                   onChangeText={(value) => setForm((current) => ({ ...current, unitValue: value }))}
                   placeholder="Unit Value"
                   keyboardType="decimal-pad"
-                  placeholderTextColor={colors.textMuted}
                 />
               </View>
 
               <View style={[styles.fieldBlock, styles.currencyField]}>
                 <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Currency<Text style={styles.requiredMark}> *</Text></Text>
                 <SelectField
-                  label=""
                   value={form.currency}
                   placeholder="EUR"
                   options={CURRENCY_OPTIONS}
+                  accessibilityLabel="Currency"
                   onChange={(value) => setForm((current) => ({ ...current, currency: value }))}
                 />
               </View>
             </View>
 
             <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Observations</Text>
-              <TextInput
-                style={[styles.input, styles.textArea, { borderBottomColor: colors.border, color: colors.textPrimary }]}
+              <TextField
+                label="Observations"
                 value={form.observations}
                 onChangeText={(value) => setForm((current) => ({ ...current, observations: value }))}
                 placeholder="Observations"
-                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={5}
                 textAlignVertical="top"
+                style={styles.textArea}
               />
             </View>
 
@@ -420,7 +275,7 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
             {isEditMode && onDelete ? (
               <TouchableOpacity
                 style={[styles.deleteBtn, { borderColor: colors.error }]}
-                onPress={() => closeAnimated(() => { onDelete(); onClose(); })}
+                onPress={() => animateClose(() => { onDelete(); onClose(); })}
                 activeOpacity={0.75}
                 accessibilityRole="button"
                 accessibilityLabel="Delete expense"
@@ -670,92 +525,9 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     backgroundColor: 'transparent',
   },
-  inputPressable: {
-    minHeight: 42,
-    borderBottomWidth: StyleSheet.hairlineWidth * 2,
-    borderBottomColor: Colors.border,
-    paddingHorizontal: 0,
-    paddingVertical: Spacing[2] + 2,
-    justifyContent: 'center',
-  },
-  iosDatePickerWrap: {
-    marginTop: Spacing[2],
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: Colors.surface,
-  },
-  iosDatePickerDoneBtn: {
-    alignSelf: 'flex-end',
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[2],
-  },
-  iosDatePickerDoneText: {
-    fontSize: Typography.size.sm,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textPrimary,
-  },
   textArea: {
     minHeight: 110,
     paddingTop: Spacing[2] + 2,
-  },
-  placeholderText: {
-    color: Colors.textMuted,
-  },
-  helperText: {
-    fontSize: Typography.size.xs,
-    fontFamily: Typography.fontFamily.regular,
-    color: Colors.textMuted,
-    lineHeight: 18,
-  },
-  selectTrigger: {
-    minHeight: 42,
-    borderBottomWidth: StyleSheet.hairlineWidth * 2,
-    borderBottomColor: Colors.border,
-    paddingHorizontal: 0,
-    paddingVertical: Spacing[2] + 2,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  selectTriggerText: {
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.regular,
-    color: Colors.textPrimary,
-    flexShrink: 1,
-  },
-  caretOpen: {
-    transform: [{ rotate: '180deg' }],
-  },
-  selectMenu: {
-    marginTop: Spacing[2],
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: Colors.background,
-  },
-  selectItem: {
-    minHeight: 42,
-    paddingHorizontal: Spacing[3],
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  selectItemBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-  },
-  selectItemText: {
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.regular,
-    color: Colors.textSecondary,
-  },
-  selectItemTextActive: {
-    fontFamily: Typography.fontFamily.medium,
-    color: Colors.textPrimary,
   },
   rowFields: {
     flexDirection: 'row',

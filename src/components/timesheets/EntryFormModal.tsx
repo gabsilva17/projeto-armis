@@ -1,6 +1,10 @@
 import type { EntryInput } from '@/src/hooks/useTimesheets';
+import { SelectField } from '@/src/components/ui/SelectField';
+import { TextField } from '@/src/components/ui/TextField';
 import { Colors, Spacing, Typography, useTheme } from '@/src/theme';
-import { useEffect, useRef, useState } from 'react';
+import { HIT_SLOP } from '@/src/constants/ui.constants';
+import { useSlideUpModalAnimation } from '@/src/hooks/useSlideUpModalAnimation';
+import { useEffect, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -10,12 +14,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaretDownIcon, CheckIcon, CopySimpleIcon, TrashIcon, XIcon } from 'phosphor-react-native';
+import { CopySimpleIcon, TrashIcon, XIcon } from 'phosphor-react-native';
 import { ALL_STATUSES, STATUS_LABELS } from './timesheetsConstants';
 
 interface EntryFormModalProps {
@@ -42,50 +45,16 @@ export function EntryFormModal({
   const colors = useTheme();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<EntryInput>(initial);
-  const [mounted, setMounted] = useState(false);
-  const [statusOpen, setStatusOpen] = useState(false);
-  const slideY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const { mounted, slideY, backdropOpacity, animateClose } = useSlideUpModalAnimation({
+    visible,
+    screenHeight: SCREEN_HEIGHT,
+  });
 
   useEffect(() => {
     if (visible) {
       setForm(initial);
-      setStatusOpen(false);
-      setMounted(true);
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!mounted) return;
-    if (visible) {
-      slideY.setValue(SCREEN_HEIGHT);
-      backdropOpacity.setValue(0);
-      Animated.parallel([
-        Animated.timing(backdropOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(slideY, {
-          toValue: 0,
-          damping: 26,
-          stiffness: 230,
-          mass: 0.85,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [mounted, visible]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const animateClose = (callback: () => void) => {
-    Animated.parallel([
-      Animated.timing(backdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(slideY, {
-        toValue: SCREEN_HEIGHT,
-        duration: 260,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setMounted(false);
-      callback();
-    });
-  };
 
   const handleClose = () => animateClose(onCancel);
 
@@ -117,7 +86,7 @@ export function EntryFormModal({
           <TouchableOpacity
             style={styles.headerIconBtn}
             onPress={handleClose}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={HIT_SLOP.md}
           >
             <XIcon size={22} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -140,33 +109,28 @@ export function EntryFormModal({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Project</Text>
-              <TextInput
-                style={[styles.input, { borderBottomColor: colors.border, color: colors.textPrimary }]}
+              <TextField
+                label="Project"
                 value={form.project}
                 onChangeText={(v) => setForm((f) => ({ ...f, project: v }))}
                 placeholder="e.g. ARMIS Platform"
-                placeholderTextColor={colors.textMuted}
                 returnKeyType="next"
               />
             </View>
 
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Task</Text>
-              <TextInput
-                style={[styles.input, { borderBottomColor: colors.border, color: colors.textPrimary }]}
+              <TextField
+                label="Task"
                 value={form.task}
                 onChangeText={(v) => setForm((f) => ({ ...f, task: v }))}
                 placeholder="e.g. Frontend development"
-                placeholderTextColor={colors.textMuted}
                 returnKeyType="next"
               />
             </View>
 
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Hours</Text>
-              <TextInput
-                style={[styles.input, { borderBottomColor: colors.border, color: colors.textPrimary }]}
+              <TextField
+                label="Hours"
                 value={form.hours === 0 ? '' : String(form.hours)}
                 onChangeText={(v) => {
                   const n = parseFloat(v);
@@ -175,40 +139,19 @@ export function EntryFormModal({
                 }}
                 keyboardType="decimal-pad"
                 placeholder="8"
-                placeholderTextColor={colors.textMuted}
                 returnKeyType="done"
               />
             </View>
 
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Status</Text>
-              <TouchableOpacity
-                style={[styles.statusTrigger, { borderBottomColor: colors.border }]}
-                onPress={() => setStatusOpen((o) => !o)}
-                activeOpacity={0.75}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.statusTriggerText, { color: colors.textPrimary }]}>{STATUS_LABELS[form.status]}</Text>
-                <CaretDownIcon size={15} color={colors.textMuted} style={statusOpen && styles.caretOpen} />
-              </TouchableOpacity>
-
-              {statusOpen && (
-                <View style={[styles.dropdown, { borderColor: colors.border, backgroundColor: colors.surface }]}> 
-                  {ALL_STATUSES.map((s, i) => (
-                    <TouchableOpacity
-                      key={s}
-                      style={[styles.dropdownItem, i < ALL_STATUSES.length - 1 && [styles.dropdownItemBorder, { borderBottomColor: colors.border }]]}
-                      onPress={() => { setForm((f) => ({ ...f, status: s })); setStatusOpen(false); }}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[styles.dropdownItemText, { color: colors.textSecondary }, form.status === s && [styles.dropdownItemTextActive, { color: colors.textPrimary }]]}>
-                        {STATUS_LABELS[s]}
-                      </Text>
-                      {form.status === s && <CheckIcon size={15} color={colors.textPrimary} weight="bold" />}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+              <SelectField
+                label="Status"
+                value={form.status}
+                placeholder="Select..."
+                options={ALL_STATUSES}
+                getOptionLabel={(status) => STATUS_LABELS[status as (typeof ALL_STATUSES)[number]]}
+                onChange={(status) => setForm((current) => ({ ...current, status: status as EntryInput['status'] }))}
+              />
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -282,53 +225,6 @@ const styles = StyleSheet.create({
     gap: Spacing[5],
   },
   field: { gap: Spacing[2] },
-  fieldLabel: {
-    fontSize: Typography.size.xs,
-    fontFamily: Typography.fontFamily.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  input: {
-    borderBottomWidth: StyleSheet.hairlineWidth * 2,
-    paddingVertical: Spacing[2] + 2,
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.regular,
-  },
-  statusTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth * 2,
-    paddingVertical: Spacing[2] + 2,
-  },
-  statusTriggerText: {
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.regular,
-  },
-  caretOpen: { transform: [{ rotate: '180deg' }] },
-  dropdown: {
-    marginTop: Spacing[2],
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3],
-  },
-  dropdownItemBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  dropdownItemText: {
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.regular,
-  },
-  dropdownItemTextActive: {
-    fontFamily: Typography.fontFamily.medium,
-  },
   // Bottom nav
   bottomNav: {
     borderTopWidth: StyleSheet.hairlineWidth,

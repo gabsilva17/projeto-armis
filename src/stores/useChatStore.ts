@@ -8,8 +8,9 @@ interface ChatStore {
   messages: Message[];
   isLoading: boolean;
   error: string | null;
-  sendMessage: (content: string) => Promise<void>;
-  sendMessageWithImage: (base64: string, uri: string, text: string) => Promise<void>;
+  sendMessage: (content: string) => Promise<boolean>;
+  sendMessageWithImage: (base64: string, uri: string, text: string) => Promise<boolean>;
+  clearError: () => void;
   clearMessages: () => void;
 }
 
@@ -40,9 +41,11 @@ export const useChatStore = create<ChatStore>()(
             messages: [...s.messages, aiMessage],
             isLoading: false,
           }));
+          return true;
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : 'Failed to get a response. Please try again.';
           set({ error: message, isLoading: false });
+          return false;
         }
       },
 
@@ -68,11 +71,15 @@ export const useChatStore = create<ChatStore>()(
             messages: [...s.messages, aiMessage],
             isLoading: false,
           }));
+          return true;
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : 'Failed to get a response. Please try again.';
           set({ error: message, isLoading: false });
+          return false;
         }
       },
+
+      clearError: () => set({ error: null }),
 
       clearMessages: () => set({ messages: [], isLoading: false, error: null }),
     }),
