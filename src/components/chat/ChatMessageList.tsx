@@ -1,4 +1,4 @@
-import { Colors } from '@/src/theme';
+import { useTheme } from '@/src/theme';
 import { useRef } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { GreetingHeader } from './GreetingHeader';
@@ -24,12 +24,13 @@ export function ChatMessageList({
   suggestions,
   onSuggestionSelect,
 }: ChatMessageListProps) {
+  const colors = useTheme();
   const listRef = useRef<FlatList>(null);
   const showSuggestions = messages.length === 0;
 
   if (showSuggestions) {
     return (
-      <View style={styles.emptyContainer}>
+      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
         <GreetingHeader greeting={greeting} messageOfDay={messageOfDay} />
         <SuggestionChips chips={suggestions} onSelect={onSuggestionSelect} />
       </View>
@@ -46,7 +47,7 @@ export function ChatMessageList({
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
       onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-      style={styles.list}
+      style={[styles.list, { backgroundColor: colors.background }]}
       maxToRenderPerBatch={10}
       windowSize={7}
     />
@@ -56,15 +57,12 @@ export function ChatMessageList({
 const styles = StyleSheet.create({
   emptyContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   list: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     paddingBottom: 16,
     flexGrow: 1,
   },
 });
-

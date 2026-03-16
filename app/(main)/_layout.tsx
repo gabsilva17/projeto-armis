@@ -4,7 +4,7 @@ import { ProfileSidebar, type ProfileHandle } from '@/src/components/navigation/
 import { ChatBubbleContainer, type ChatHandle } from '@/src/components/chat/ChatBubbleContainer';
 import { RefreshProvider, useRefresh } from '@/src/contexts/RefreshContext';
 import { useSidebarStore } from '@/src/stores/useSidebarStore';
-import { Colors } from '@/src/theme';
+import { useTheme } from '@/src/theme';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Platform, StyleSheet, View } from 'react-native';
@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, withTiming } from 'react-native-reanimated';
 import type { EntryAnimationsValues } from 'react-native-reanimated';
 
-const ROUTES = ['/home', '/finances', '/timesheets', '/whistleblow'];
+const ROUTES = ['/home', '/finances', '/timesheets', '/whistleblow', '/settings'];
 const SLIDE_OFFSET = 80;
 const ANIM_DURATION = 300;
 
@@ -30,6 +30,7 @@ export default function MainLayout() {
 }
 
 function MainLayoutInner() {
+  const colors = useTheme();
   const chatRef = useRef<ChatHandle>(null);
   const profileRef = useRef<ProfileHandle>(null);
   const [chatOpen, setChatOpen] = useState(false);
@@ -43,7 +44,7 @@ function MainLayoutInner() {
     }
     closeSidebar();
   };
-  const { refreshing, triggerRefresh } = useRefresh();
+  const { refreshing, refreshKey, triggerRefresh } = useRefresh();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -90,7 +91,7 @@ function MainLayoutInner() {
   }, [pathname, router]);
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* TopBar */}
       <TopBar
         onProfilePress={(x, y) => profileRef.current?.open(x, y)}
@@ -109,7 +110,7 @@ function MainLayoutInner() {
           },
         ]}
       >
-        <Animated.View key={currentIndex} entering={entering} style={styles.contentInner}>
+        <Animated.View key={`${currentIndex}-${refreshKey}`} entering={entering} style={styles.contentInner}>
           <Slot />
         </Animated.View>
       </View>
@@ -129,7 +130,6 @@ function MainLayoutInner() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     flex: 1,

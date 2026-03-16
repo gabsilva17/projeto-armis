@@ -1,4 +1,5 @@
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { useTheme } from '@/src/theme';
+import { Spacing, Typography } from '@/src/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { MONTH_NAMES } from './timesheetsConstants';
 
@@ -10,18 +11,19 @@ interface CalendarHeaderProps {
 }
 
 export function CalendarHeader({ year, month, totalHours, daysLogged }: CalendarHeaderProps) {
+  const colors = useTheme();
   return (
     <View style={styles.calHeader}>
-      <Text style={styles.monthTitle}>{MONTH_NAMES[month]} {year}</Text>
+      <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>{MONTH_NAMES[month]} {year}</Text>
       <View style={styles.summaryRow}>
         <View style={styles.summaryChip}>
-          <Text style={styles.summaryValue}>{totalHours}h</Text>
-          <Text style={styles.summaryLabel}>Total</Text>
+          <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{totalHours}h</Text>
+          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Total</Text>
         </View>
-        <View style={styles.summaryDivider} />
+        <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
         <View style={styles.summaryChip}>
-          <Text style={styles.summaryValue}>{daysLogged}</Text>
-          <Text style={styles.summaryLabel}>Days logged</Text>
+          <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{daysLogged}</Text>
+          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Days logged</Text>
         </View>
       </View>
     </View>
@@ -33,7 +35,6 @@ const styles = StyleSheet.create({
   monthTitle: {
     fontSize: Typography.size.xl,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textPrimary,
     textAlign: 'center',
     marginBottom: Spacing[3],
   },
@@ -47,13 +48,11 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: Typography.size.lg,
     fontFamily: Typography.fontFamily.bold,
-    color: Colors.textPrimary,
   },
-  summaryLabel: { fontSize: Typography.size.xs, color: Colors.textMuted, marginTop: 2 },
+  summaryLabel: { fontSize: Typography.size.xs, marginTop: 2 },
   summaryDivider: {
     width: 1,
     height: 32,
-    backgroundColor: Colors.border,
     marginHorizontal: Spacing[4],
   },
 });

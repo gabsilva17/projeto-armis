@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { submitInvoice as submitInvoiceService } from '../services/finances/financesService';
-import type { FinancesState, InvoiceData } from '../types/finances.types';
+import type { FinancesState, InvoiceData, ManualExpenseEntry, ManualExpenseForm } from '../types/finances.types';
 
 interface FinancesStore {
   photoUri: string | null;
@@ -9,10 +9,14 @@ interface FinancesStore {
   referenceId: string | null;
   invoiceData: InvoiceData | null;
   error: string | null;
+  entries: ManualExpenseEntry[];
   setPhoto: (uri: string, base64: string | null) => void;
   clearPhoto: () => void;
   submitInvoice: () => Promise<void>;
   reset: () => void;
+  addEntry: (form: ManualExpenseForm) => void;
+  updateEntry: (id: string, form: ManualExpenseForm) => void;
+  deleteEntry: (id: string) => void;
 }
 
 export const useFinancesStore = create<FinancesStore>((set, get) => ({
@@ -22,6 +26,7 @@ export const useFinancesStore = create<FinancesStore>((set, get) => ({
   referenceId: null,
   invoiceData: null,
   error: null,
+  entries: [],
 
   setPhoto: (uri, base64) =>
     set({ photoUri: uri, photoBase64: base64, status: 'idle', referenceId: null, invoiceData: null, error: null }),
@@ -59,5 +64,24 @@ export const useFinancesStore = create<FinancesStore>((set, get) => ({
       const message = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
       set({ status: 'error', error: message });
     }
+  },
+
+  addEntry: (form) => {
+    const newEntry: ManualExpenseEntry = {
+      ...form,
+      id: String(Date.now()),
+      createdAtLabel: new Date().toLocaleDateString('pt-PT'),
+    };
+    set((state) => ({ entries: [newEntry, ...state.entries] }));
+  },
+
+  updateEntry: (id, form) => {
+    set((state) => ({
+      entries: state.entries.map((e) => (e.id === id ? { ...e, ...form } : e)),
+    }));
+  },
+
+  deleteEntry: (id) => {
+    set((state) => ({ entries: state.entries.filter((e) => e.id !== id) }));
   },
 }));

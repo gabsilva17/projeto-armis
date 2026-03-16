@@ -1,6 +1,8 @@
-import { APP_NAME, USER_NAME } from '@/src/constants/app.constants';
+import { APP_NAME, ROUTES, USER_NAME } from '@/src/constants/app.constants';
 import { useProfileAnimation } from '@/src/hooks/useProfileAnimation';
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { useTheme } from '@/src/theme';
+import { useThemeStore } from '@/src/stores/useThemeStore';
+import { Spacing, Typography } from '@/src/theme';
 import {
   BellIcon,
   CaretRightIcon,
@@ -13,9 +15,12 @@ import {
   type Icon,
 } from 'phosphor-react-native';
 import { setStatusBarStyle } from 'expo-status-bar';
+import { useRouter, type Href } from 'expo-router';
 import { forwardRef, useImperativeHandle } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const CLOSE_TO_NAV_DELAY_MS = 180;
 
 export interface ProfileHandle {
   open: (originX: number, originY: number) => void;
@@ -34,9 +39,10 @@ interface ProfileMenuItemProps {
 }
 
 function ProfileMenuItem({ icon: IconComponent, label, onPress, destructive, noBorder }: ProfileMenuItemProps) {
+  const colors = useTheme();
   return (
     <TouchableOpacity
-      style={[styles.menuRow, noBorder && styles.menuRowNoBorder]}
+      style={[styles.menuRow, noBorder && styles.menuRowNoBorder, { borderBottomColor: colors.sidebarDivider }]}
       onPress={onPress}
       activeOpacity={0.5}
       accessibilityRole="button"
@@ -44,16 +50,19 @@ function ProfileMenuItem({ icon: IconComponent, label, onPress, destructive, noB
     >
       <IconComponent
         size={18}
-        color={destructive ? '#e05c5c' : ROW_ICON}
+        color={destructive ? colors.error : colors.sidebarText}
         weight="regular"
       />
-      <Text style={[styles.menuLabel, destructive && styles.menuLabelDestructive]}>{label}</Text>
-      {!destructive && <CaretRightIcon size={13} color={ROW_CARET} />}
+      <Text style={[styles.menuLabel, { color: destructive ? colors.error : colors.sidebarText }]}>{label}</Text>
+      {!destructive && <CaretRightIcon size={13} color={colors.sidebarMuted} />}
     </TouchableOpacity>
   );
 }
 
 export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(function ProfileSidebar({ onOpenChange }, ref) {
+  const colors = useTheme();
+  const themeId = useThemeStore((s) => s.themeId);
+  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const {
@@ -72,13 +81,20 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
   const handleOpen = (originX: number, originY: number) => {
     openProfile(originX, originY);
     onOpenChange?.(true);
-    setStatusBarStyle('dark');
+    setStatusBarStyle('light');
   };
 
   const handleClose = () => {
     closeProfile();
     onOpenChange?.(false);
-    setStatusBarStyle('dark');
+    setStatusBarStyle(themeId === 'dark' ? 'light' : 'dark');
+  };
+
+  const handleOpenSettings = () => {
+    handleClose();
+    setTimeout(() => {
+      router.push(ROUTES.SETTINGS as Href);
+    }, CLOSE_TO_NAV_DELAY_MS);
   };
 
   useImperativeHandle(ref, () => ({
@@ -111,6 +127,7 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
             height: expandH,
             borderRadius: expandRadius,
             opacity: expandOpacity,
+            backgroundColor: colors.sidebarBackground,
           },
         ]}
         pointerEvents="auto"
@@ -125,7 +142,7 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
               accessibilityRole="button"
               accessibilityLabel="Fechar perfil"
             >
-              <XIcon size={20} color={ICON_MUTED} />
+              <XIcon size={20} color={colors.sidebarMuted} />
             </TouchableOpacity>
           </View>
 
@@ -137,24 +154,24 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
           >
             {/* Hero */}
             <View style={styles.hero}>
-              <View style={styles.avatar} accessibilityRole="image" accessibilityLabel="Avatar">
-                <Text style={styles.avatarInitials}>{initials}</Text>
+              <View style={[styles.avatar, { backgroundColor: colors.sidebarText }]} accessibilityRole="image" accessibilityLabel="Avatar">
+                <Text style={[styles.avatarInitials, { color: colors.sidebarBackground }]}>{initials}</Text>
               </View>
-              <Text style={styles.profileName}>{USER_NAME}</Text>
-              <Text style={styles.profileRole}>Employee · ARMIS</Text>
+              <Text style={[styles.profileName, { color: colors.sidebarText }]}>{USER_NAME}</Text>
+              <Text style={[styles.profileRole, { color: colors.sidebarMuted }]}>Employee · ARMIS</Text>
             </View>
 
             {/* Conta */}
-            <Text style={styles.sectionLabel}>Conta</Text>
-            <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.sidebarMuted }]}>Conta</Text>
+            <View style={[styles.section, { borderTopColor: colors.sidebarDivider }]}>
               <ProfileMenuItem icon={UserIcon} label="Perfil" />
               <ProfileMenuItem icon={BellIcon} label="Notificações" noBorder />
             </View>
 
             {/* Aplicação */}
-            <Text style={styles.sectionLabel}>Aplicação</Text>
-            <View style={styles.section}>
-              <ProfileMenuItem icon={GearIcon} label="Definições" />
+            <Text style={[styles.sectionLabel, { color: colors.sidebarMuted }]}>Aplicação</Text>
+            <View style={[styles.section, { borderTopColor: colors.sidebarDivider }]}>
+              <ProfileMenuItem icon={GearIcon} label="Definições" onPress={handleOpenSettings} />
               <ProfileMenuItem icon={QuestionIcon} label="Ajuda & Suporte" />
               <ProfileMenuItem icon={InfoIcon} label="Sobre" noBorder />
             </View>
@@ -164,7 +181,7 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
               <ProfileMenuItem icon={SignOutIcon} label="Terminar sessão" destructive noBorder />
             </View>
 
-            <Text style={styles.versionLabel}>{APP_NAME} · v1.0</Text>
+            <Text style={[styles.versionLabel, { color: colors.sidebarDivider }]}>{APP_NAME} · v1.0</Text>
           </ScrollView>
 
         </Animated.View>
@@ -173,17 +190,9 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
   );
 });
 
-// ── Tokens ──────────────────────────────────────────────────────────────────
-const BG         = '#111111';
-const DIVIDER    = '#1e1e1e';
-const ROW_ICON   = Colors.white;
-const ROW_CARET  = '#3a3a3a';
-const ICON_MUTED = '#505050';
-
 const styles = StyleSheet.create({
   expandContainer: {
     position: 'absolute',
-    backgroundColor: BG,
     overflow: 'hidden',
   },
   content: {
@@ -216,7 +225,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing[4],
@@ -224,13 +232,11 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: Typography.size.xl,
     fontFamily: Typography.fontFamily.bold,
-    color: BG,
     letterSpacing: 1,
   },
   profileName: {
     fontSize: Typography.size['2xl'],
     fontFamily: Typography.fontFamily.bold,
-    color: Colors.white,
     letterSpacing: -0.5,
     lineHeight: 34,
     marginBottom: Spacing[1],
@@ -239,7 +245,6 @@ const styles = StyleSheet.create({
   profileRole: {
     fontSize: Typography.size.sm,
     fontFamily: Typography.fontFamily.regular,
-    color: ICON_MUTED,
     textAlign: 'center',
   },
 
@@ -247,7 +252,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: Typography.size.xs,
     fontFamily: Typography.fontFamily.medium,
-    color: '#3a3a3a',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     marginBottom: Spacing[1],
@@ -257,7 +261,6 @@ const styles = StyleSheet.create({
   // ── Section wrapper (border-top + items com border-bottom)
   section: {
     borderTopWidth: 1,
-    borderTopColor: DIVIDER,
   },
 
   // ── Menu rows
@@ -267,7 +270,6 @@ const styles = StyleSheet.create({
     gap: Spacing[3],
     paddingVertical: Spacing[4],
     borderBottomWidth: 1,
-    borderBottomColor: DIVIDER,
   },
   menuRowNoBorder: {
     borderBottomWidth: 0,
@@ -276,10 +278,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.medium,
-    color: Colors.white,
-  },
-  menuLabelDestructive: {
-    color: '#e05c5c',
   },
 
   // ── Logout (sem borders, espaçamento próprio)
@@ -292,7 +290,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing[8],
     fontSize: Typography.size.xs,
     fontFamily: Typography.fontFamily.regular,
-    color: '#2e2e2e',
     textAlign: 'center',
     letterSpacing: 0.4,
   },

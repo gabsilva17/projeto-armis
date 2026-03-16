@@ -1,5 +1,5 @@
 import type { EntryInput } from '@/src/hooks/useTimesheets';
-import { Colors } from '@/src/theme';
+import type { ThemeColors } from '@/src/theme';
 import type { TimesheetEntryStatus } from '@/src/types/timesheets';
 
 export const MONTH_NAMES = [
@@ -9,11 +9,15 @@ export const MONTH_NAMES = [
 
 export const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export const STATUS_COLORS: Record<TimesheetEntryStatus, string> = {
-  approved: Colors.black,
-  pending: Colors.gray500,
-  draft: Colors.gray300,
+export const STATUS_COLOR_KEYS: Record<TimesheetEntryStatus, keyof ThemeColors> = {
+  approved: 'black',
+  pending: 'gray500',
+  draft: 'gray300',
 };
+
+export function getStatusColor(status: TimesheetEntryStatus, colors: ThemeColors): string {
+  return colors[STATUS_COLOR_KEYS[status]];
+}
 
 export const STATUS_LABELS: Record<TimesheetEntryStatus, string> = {
   approved: 'Approved',

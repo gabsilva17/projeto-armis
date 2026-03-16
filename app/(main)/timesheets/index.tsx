@@ -5,22 +5,22 @@ import { DayDetail } from '@/src/components/timesheets/DayDetail';
 import { EntryFormModal } from '@/src/components/timesheets/EntryFormModal';
 import {
   EMPTY_INPUT,
-  STATUS_COLORS,
+  getStatusColor,
   STATUS_LABELS,
 } from '@/src/components/timesheets/timesheetsConstants';
 import {
   buildCalendarGrid,
   getWeekRowForDay,
 } from '@/src/components/timesheets/timesheetsHelpers';
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { Spacing, Typography, useTheme } from '@/src/theme';
 import type { TimesheetEntry, TimesheetEntryStatus } from '@/src/types/timesheets';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
-import { useTopbarRefresh } from '@/src/hooks/useTopbarRefresh';
 
 export default function TimesheetsScreen() {
+  const colors = useTheme();
   const {
     monthData,
     selectedDay,
@@ -38,8 +38,6 @@ export default function TimesheetsScreen() {
     editEntry,
     deleteEntry,
   } = useTimesheets();
-
-  useTopbarRefresh(refresh);
 
   const [formVisible, setFormVisible] = useState(false);
   const [formTitle, setFormTitle] = useState('Add Entry');
@@ -102,7 +100,7 @@ export default function TimesheetsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.headerArea}>
         <CalendarHeader
           year={currentYear}
@@ -156,8 +154,8 @@ export default function TimesheetsScreen() {
           <View style={styles.legend}>
             {(Object.keys(STATUS_LABELS) as TimesheetEntryStatus[]).map((s) => (
               <View key={s} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: STATUS_COLORS[s] }]} />
-                <Text style={styles.legendLabel}>{STATUS_LABELS[s]}</Text>
+                <View style={[styles.legendDot, { backgroundColor: getStatusColor(s, colors) }]} />
+                <Text style={[styles.legendLabel, { color: colors.textSecondary }]}>{STATUS_LABELS[s]}</Text>
               </View>
             ))}
           </View>
@@ -180,7 +178,7 @@ export default function TimesheetsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1 },
   headerArea: {
     paddingHorizontal: Spacing[6],
     paddingTop: Spacing[2],
@@ -203,5 +201,5 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendLabel: { fontSize: Typography.size.xs, color: Colors.textSecondary },
+  legendLabel: { fontSize: Typography.size.xs },
 });

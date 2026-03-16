@@ -1,4 +1,5 @@
-import { Colors, Spacing } from '@/src/theme';
+import { Spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme';
 import { ClockIcon, CurrencyDollarIcon, HouseIcon, ShieldCheckIcon, type Icon } from 'phosphor-react-native';
 import { Link, usePathname, type Href } from 'expo-router';
 import { useEffect, useMemo } from 'react';
@@ -34,6 +35,7 @@ interface BottomNavBarProps {
 }
 
 export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
+  const colors = useTheme();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -60,12 +62,12 @@ export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
 
   return (
     <Animated.View
-      style={[styles.wrapper, { paddingBottom: insets.bottom }, animatedStyle]}
+      style={[styles.wrapper, { paddingBottom: insets.bottom, backgroundColor: colors.background, borderTopColor: colors.border }, animatedStyle]}
       pointerEvents="box-none"
     >
       <View style={styles.bar} accessibilityRole="tablist">
         {/* Sliding highlight */}
-        <Animated.View style={[styles.pillHighlight, highlightStyle]} />
+        <Animated.View style={[styles.pillHighlight, highlightStyle, { backgroundColor: colors.gray100 }]} />
 
         {NAV_ITEMS.map((item) => {
           const isActive = pathname.includes(item.route);
@@ -79,11 +81,11 @@ export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
                 accessibilityLabel={item.label}
               >
                 <item.IconComponent
-                  size={24}
-                  color={isActive ? Colors.black : Colors.gray400}
+                  size={22}
+                  color={isActive ? colors.black : colors.gray400}
                   weight={'bold'}
                 />
-                <Text style={[styles.label, isActive && styles.labelActive]}>
+                <Text style={[styles.label, { color: isActive ? colors.black : colors.gray400 }, isActive && styles.labelActive]}>
                   {item.label}
                 </Text>
               </TouchableOpacity>
@@ -102,9 +104,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 50,
-    backgroundColor: Colors.white,
     borderTopWidth: 1,
-    borderTopColor: Colors.gray200,
   },
   bar: {
     flexDirection: 'row',
@@ -118,7 +118,6 @@ const styles = StyleSheet.create({
     bottom: Spacing[1],
     width: ITEM_WIDTH,
     borderRadius: 999,
-    backgroundColor: Colors.gray100,
   },
   navItem: {
     flex: 1,
@@ -129,13 +128,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   label: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: 'Inter_500Medium',
-    color: Colors.gray400,
     letterSpacing: 0.2,
   },
   labelActive: {
-    color: Colors.black,
     fontFamily: 'Inter_600SemiBold',
   },
 });

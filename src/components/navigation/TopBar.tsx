@@ -1,4 +1,5 @@
-import { Colors, Spacing } from '@/src/theme';
+import { Spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme';
 import { ChatCircleIcon, UserIcon } from 'phosphor-react-native';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -24,6 +25,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ onProfilePress, onChatPress, chatOpen, refreshing, onRefresh }: TopBarProps) {
+  const colors = useTheme();
   const insets = useSafeAreaInsets();
   const chatBtnRef = useRef<View>(null);
   const profileBtnRef = useRef<View>(null);
@@ -86,10 +88,10 @@ export function TopBar({ onProfilePress, onChatPress, chatOpen, refreshing, onRe
   return (
     <GestureDetector gesture={pullGesture}>
       <Animated.View>
-        <View style={[styles.container, { paddingTop: insets.top + Spacing[2] }]}>
+        <View style={[styles.container, { paddingTop: insets.top + Spacing[2], backgroundColor: colors.background }]}>
           {/* Left — profile button */}
           <TouchableOpacity ref={profileBtnRef} style={styles.chatBtn} onPress={handleProfilePress} activeOpacity={0.6}>
-            <UserIcon size={26} color={Colors.black} />
+            <UserIcon size={26} color={colors.black} />
           </TouchableOpacity>
 
           {/* Center spacer */}
@@ -103,12 +105,12 @@ export function TopBar({ onProfilePress, onChatPress, chatOpen, refreshing, onRe
               onPress={handleChatPress}
               activeOpacity={0.6}
             >
-              <ChatCircleIcon size={26} color={Colors.black} />
+              <ChatCircleIcon size={26} color={colors.black} />
             </TouchableOpacity>
           )}
         </View>
         <Animated.View style={[styles.indicatorContainer, indicatorStyle]}>
-          <ActivityIndicator size="small" color={Colors.textPrimary} />
+          <ActivityIndicator size="small" color={colors.textPrimary} />
         </Animated.View>
       </Animated.View>
     </GestureDetector>
@@ -121,21 +123,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing[4],
     paddingBottom: Spacing[2],
-    backgroundColor: Colors.background,
     zIndex: 5,
-  },
-  avatarBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: Colors.black,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.14,
-    shadowRadius: 6,
-    elevation: 4,
   },
   spacer: {
     flex: 1,

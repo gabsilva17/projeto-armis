@@ -1,4 +1,5 @@
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { useTheme } from '@/src/theme';
+import { Spacing, Typography } from '@/src/theme';
 import { TrashIcon } from 'phosphor-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -10,6 +11,7 @@ interface ChatMenuProps {
 }
 
 export function ChatDropdownMenu({ isOpen, onClose, onClearMessages }: ChatMenuProps) {
+  const colors = useTheme();
   const [mounted, setMounted] = useState(false);
   const scale = useRef(new Animated.Value(0.85)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -47,7 +49,14 @@ export function ChatDropdownMenu({ isOpen, onClose, onClearMessages }: ChatMenuP
       <Animated.View
         style={[
           styles.dropdown,
-          { opacity, transform: [{ scale }], zIndex: 100 },
+          {
+            opacity,
+            transform: [{ scale }],
+            zIndex: 100,
+            backgroundColor: colors.white,
+            borderColor: colors.border,
+            shadowColor: colors.black,
+          },
         ]}
       >
         <TouchableOpacity
@@ -57,8 +66,8 @@ export function ChatDropdownMenu({ isOpen, onClose, onClearMessages }: ChatMenuP
             onClearMessages();
           }}
         >
-          <TrashIcon size={16} color={Colors.error} />
-          <Text style={styles.dropdownItemText}>Delete chat</Text>
+          <TrashIcon size={16} color={colors.error} />
+          <Text style={[styles.dropdownItemText, { color: colors.error }]}>Delete chat</Text>
         </TouchableOpacity>
       </Animated.View>
     </>
@@ -70,11 +79,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 80,
     left: Spacing[4],
-    backgroundColor: Colors.white,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -92,6 +98,5 @@ const styles = StyleSheet.create({
   dropdownItemText: {
     fontSize: Typography.size.sm,
     fontFamily: Typography.fontFamily.medium,
-    color: Colors.error,
   },
 });

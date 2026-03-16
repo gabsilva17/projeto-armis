@@ -1,26 +1,20 @@
-import { Colors, Spacing, Typography } from '@/src/theme';
-import { useTopbarRefresh } from '@/src/hooks/useTopbarRefresh';
+import { Spacing, Typography, useTheme } from '@/src/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function WhistleblowingScreen() {
-  const handleRefresh = useCallback(async () => {
-    // No remote data in this screen yet; keep topbar refresh behavior consistent.
-  }, []);
-
-  useTopbarRefresh(handleRefresh);
+  const colors = useTheme();
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.iconWrapper}>
-        <Ionicons name="shield-checkmark-outline" size={40} color={Colors.textPrimary} />
+      <View style={[styles.iconWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Ionicons name="shield-checkmark-outline" size={40} color={colors.textPrimary} />
       </View>
-      <Text style={styles.subtitle}>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         Report concerns confidentially and securely. Your identity is protected.
       </Text>
     </ScrollView>
@@ -30,7 +24,6 @@ export default function WhistleblowingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     flexGrow: 1,
@@ -44,16 +37,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 24,
-    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing[2],
   },
   subtitle: {
     fontSize: Typography.size.base,
-    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },

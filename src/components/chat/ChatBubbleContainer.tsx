@@ -1,7 +1,8 @@
 import { ChatInput } from './ChatInput';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatDropdownMenu } from './ChatDropdownMenu';
-import { Colors, Spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme';
+import { Spacing } from '@/src/theme';
 import { useChatStore } from '@/src/stores/useChatStore';
 import { useChatAnimation } from '@/src/hooks/useChatAnimation';
 import { getDefaultSuggestions, getChatGreeting } from '@/src/services/chat/chatService';
@@ -27,6 +28,7 @@ interface ChatBubbleContainerProps {
 }
 
 export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerProps>(function ChatBubbleContainer({ onOpenChange }, ref) {
+  const colors = useTheme();
   const { messages, isLoading, sendMessage, sendMessageWithImage, clearMessages } = useChatStore();
   const insets = useSafeAreaInsets();
   const chatGreeting = useMemo(() => getChatGreeting(), []);
@@ -87,6 +89,7 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
             height: expandH,
             borderRadius: expandRadius,
             opacity: expandOpacity,
+            backgroundColor: colors.background,
           },
         ]}
         pointerEvents="auto"
@@ -94,13 +97,13 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
         {/* Content hidden during expand animation, fades in after */}
         <Animated.View style={[styles.chatContent, { opacity: contentOpacity }]}>
           {/* Header */}
-          <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
             <TouchableOpacity
               style={styles.headerButton}
               onPress={() => setMenuOpen((v) => !v)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <DotsThreeVerticalIcon size={20} color={Colors.textPrimary} />
+              <DotsThreeVerticalIcon size={20} color={colors.textPrimary} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -108,7 +111,7 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
               onPress={handleClose}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <XIcon size={24} color={Colors.textPrimary} />
+              <XIcon size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -141,7 +144,6 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
 const styles = StyleSheet.create({
   expandContainer: {
     position: 'absolute',
-    backgroundColor: Colors.background,
     // overflow: 'hidden' removido — chatContent opacity é 0 durante a animação de expansão,
     // por isso o conteúdo filho nunca é visível fora do border radius animado.
   },
@@ -156,7 +158,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     paddingTop: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
   },
   headerButton: {
     width: 36,
