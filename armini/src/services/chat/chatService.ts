@@ -1,5 +1,5 @@
 import { DEFAULT_SUGGESTIONS } from '../../constants/suggestions';
-import { callClaude, type AnthropicMessage } from '../api/anthropic';
+import { callClaude, type AnthropicMessage, type ContentBlock } from '../api/anthropic';
 import type { Message, SuggestionChip } from '../../types/chat.types';
 
 export function getDailyGreeting(userName: string): string {
@@ -32,6 +32,40 @@ export function getMessageOfDay(): string {
 
 export function getDefaultSuggestions(): SuggestionChip[] {
   return DEFAULT_SUGGESTIONS;
+}
+
+export async function sendMessageWithImage(
+  base64: string,
+  text: string,
+  history: Message[],
+): Promise<Message> {
+  const imageContent: ContentBlock[] = [
+    {
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: base64 },
+    },
+    {
+      type: 'text',
+      text: text.trim() || 'Please analyze this image and tell me what you see.',
+    },
+  ];
+
+  const anthropicMessages: AnthropicMessage[] = [
+    ...history.map((m) => ({
+      role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
+      content: m.content,
+    })),
+    { role: 'user' as const, content: imageContent },
+  ];
+
+  const responseText = await callClaude(anthropicMessages);
+
+  return {
+    id: `ai-${Date.now()}`,
+    content: responseText,
+    sender: 'ai',
+    timestamp: new Date(),
+  };
 }
 
 export async function sendMessage(

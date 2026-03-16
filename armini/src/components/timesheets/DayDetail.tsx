@@ -15,18 +15,16 @@ interface EntryRowProps {
 
 const EntryRow = React.memo(function EntryRow({ entry, onEdit }: EntryRowProps) {
   return (
-    <Animated.View layout={LinearTransition.duration(200)} style={styles.entryWrapper}>
+    <Animated.View layout={LinearTransition.duration(200)}>
       <TouchableOpacity
-        style={styles.entryCard}
+        style={styles.entryRow}
         onPress={() => onEdit(entry)}
-        activeOpacity={0.85}
+        activeOpacity={0.7}
       >
-        <View style={styles.entryLeft}>
-          <View style={[styles.entryStatusBar, { backgroundColor: STATUS_COLORS[entry.status] }]} />
-          <View style={styles.entryInfo}>
-            <Text style={styles.entryProject}>{entry.project}</Text>
-            <Text style={styles.entryTask}>{entry.task}</Text>
-          </View>
+        <View style={[styles.entryStatusBar, { backgroundColor: STATUS_COLORS[entry.status] }]} />
+        <View style={styles.entryInfo}>
+          <Text style={styles.entryProject}>{entry.project}</Text>
+          <Text style={styles.entryTask}>{entry.task}</Text>
         </View>
         <View style={styles.entryRight}>
           <Text style={styles.entryHours}>{entry.hours}h</Text>
@@ -79,7 +77,7 @@ export function DayDetail({ daySummary, date, onClose, onAdd, onEdit }: DayDetai
       {entries.length === 0 ? (
         <Text style={styles.emptyEntries}>No entries yet. Tap + to add one.</Text>
       ) : (
-        <Animated.View layout={LinearTransition.duration(200)}>
+        <Animated.View layout={LinearTransition.duration(200)} style={styles.entriesList}>
           {entries.map((entry) => (
             <EntryRow
               key={entry.id}
@@ -131,20 +129,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: Spacing[4],
   },
-  entryWrapper: { marginBottom: Spacing[3] },
-  entryCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3],
+  entriesList: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
-  entryLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: Spacing[3] },
-  entryStatusBar: { width: 3, height: 36, borderRadius: 2 },
+  entryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[3],
+    paddingVertical: Spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  entryStatusBar: { width: 3, height: 28, borderRadius: 2 },
   entryInfo: { flex: 1, gap: 3 },
   entryProject: {
     fontSize: Typography.size.sm,

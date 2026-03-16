@@ -35,31 +35,20 @@ function Dot({ delay }: { delay: number }) {
 export function LoadingDots() {
   return (
     <View style={styles.container}>
-      <View style={styles.bubble}>
-        <Dot delay={0} />
-        <Dot delay={150} />
-        <Dot delay={300} />
-      </View>
+      <Dot delay={0} />
+      <Dot delay={150} />
+      <Dot delay={300} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'flex-start',
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[2],
-  },
-  bubble: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: Colors.bubbleAI,
-    borderWidth: 1,
-    borderColor: Colors.bubbleAIBorder,
-    borderRadius: 18,
     paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3],
+    paddingVertical: Spacing[2],
   },
   dot: {
     width: 7,

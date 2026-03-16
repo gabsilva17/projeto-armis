@@ -1,4 +1,4 @@
-export const APP_NAME = 'ARMINI';
+export const APP_NAME = 'ARMIS';
 export const USER_NAME = 'Gabriel';
 
 // Feature flags — flip to true when backend is ready

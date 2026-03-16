@@ -1,5 +1,6 @@
 import { Colors, Spacing, Typography } from '@/src/theme';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SuggestionChip as SuggestionChipType } from '@/src/types/chat.types';
 
 interface SuggestionChipProps {
@@ -11,32 +12,36 @@ export function SuggestionChip({ chip, onPress }: SuggestionChipProps) {
   return (
     <Pressable
       onPress={() => onPress(chip.prompt)}
-      style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
       accessibilityRole="button"
       accessibilityLabel={chip.label}
     >
-      <Text style={styles.label}>{chip.label}</Text>
+      <View style={styles.body}>
+        <Text style={styles.label}>{chip.label}</Text>
+      </View>
+      <Ionicons name="arrow-forward" size={16} color={Colors.textPrimary} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  chip: {
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 20,
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[2],
-    cursor: 'pointer' as never,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[3],
+    paddingVertical: Spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  chipPressed: {
+  rowPressed: {
     backgroundColor: Colors.gray100,
-    borderColor: Colors.gray300,
+  },
+  body: {
+    flex: 1,
   },
   label: {
-    fontSize: Typography.size.sm,
-    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.size.base,
+    fontFamily: Typography.fontFamily.semibold,
     color: Colors.textPrimary,
   },
 });

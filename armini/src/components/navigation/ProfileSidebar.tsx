@@ -1,21 +1,20 @@
-import { SectionLabel } from '@/src/components/ui/Typography';
 import { APP_NAME, USER_NAME } from '@/src/constants/app.constants';
 import { useProfileAnimation } from '@/src/hooks/useProfileAnimation';
 import { Colors, Spacing, Typography } from '@/src/theme';
 import {
   BellIcon,
   CaretRightIcon,
-  QuestionIcon,
-  InfoIcon,
-  SignOutIcon,
   GearIcon,
+  InfoIcon,
+  QuestionIcon,
+  SignOutIcon,
   UserIcon,
   XIcon,
   type Icon,
 } from 'phosphor-react-native';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { forwardRef, useImperativeHandle } from 'react';
-import { Animated, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface ProfileHandle {
@@ -31,14 +30,25 @@ interface ProfileMenuItemProps {
   label: string;
   onPress?: () => void;
   destructive?: boolean;
+  noBorder?: boolean;
 }
 
-function ProfileMenuItem({ icon: IconComponent, label, onPress, destructive }: ProfileMenuItemProps) {
+function ProfileMenuItem({ icon: IconComponent, label, onPress, destructive, noBorder }: ProfileMenuItemProps) {
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
-      <IconComponent size={20} color={destructive ? Colors.gray400 : Colors.sidebarText} weight='bold' />
+    <TouchableOpacity
+      style={[styles.menuRow, noBorder && styles.menuRowNoBorder]}
+      onPress={onPress}
+      activeOpacity={0.5}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <IconComponent
+        size={18}
+        color={destructive ? '#e05c5c' : ROW_ICON}
+        weight="regular"
+      />
       <Text style={[styles.menuLabel, destructive && styles.menuLabelDestructive]}>{label}</Text>
-      <CaretRightIcon size={16} color={Colors.gray700} style={styles.chevron} />
+      {!destructive && <CaretRightIcon size={13} color={ROW_CARET} />}
     </TouchableOpacity>
   );
 }
@@ -62,7 +72,7 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
   const handleOpen = (originX: number, originY: number) => {
     openProfile(originX, originY);
     onOpenChange?.(true);
-    setStatusBarStyle('light');
+    setStatusBarStyle('dark');
   };
 
   const handleClose = () => {
@@ -74,6 +84,14 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
   useImperativeHandle(ref, () => ({
     open: handleOpen,
   }));
+
+  const initials = USER_NAME
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <Modal
@@ -98,143 +116,184 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
         pointerEvents="auto"
       >
         <Animated.View style={[styles.content, { opacity: contentOpacity }]}>
-          {/* Header */}
-          <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+
+          {/* ── Close button — fixo fora do scroll ── */}
+          <View style={[styles.header, { paddingTop: insets.top + Spacing[2] }]}>
             <TouchableOpacity
-              style={styles.closeBtn}
               onPress={handleClose}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar perfil"
             >
-              <XIcon size={24} color={Colors.sidebarText} />
+              <XIcon size={20} color={ICON_MUTED} />
             </TouchableOpacity>
           </View>
 
-          {/* Profile info */}
-          <View style={styles.profileSection}>
-            <View style={styles.avatar} accessibilityLabel="User profile avatar" accessibilityRole="image">
-              <UserIcon size={32} color={Colors.white} weight='bold' />
+          {/* ── Tudo scrollável ── */}
+          <ScrollView
+            style={styles.scrollArea}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing[8] }]}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Hero */}
+            <View style={styles.hero}>
+              <View style={styles.avatar} accessibilityRole="image" accessibilityLabel="Avatar">
+                <Text style={styles.avatarInitials}>{initials}</Text>
+              </View>
+              <Text style={styles.profileName}>{USER_NAME}</Text>
+              <Text style={styles.profileRole}>Employee · ARMIS</Text>
             </View>
-            <Text style={styles.profileName}>{USER_NAME}</Text>
-            <Text style={styles.profileRole}>Employee · ARMINI</Text>
-          </View>
 
-          <View style={styles.divider} />
+            {/* Conta */}
+            <Text style={styles.sectionLabel}>Conta</Text>
+            <View style={styles.section}>
+              <ProfileMenuItem icon={UserIcon} label="Perfil" />
+              <ProfileMenuItem icon={BellIcon} label="Notificações" noBorder />
+            </View>
 
-          {/* Menu items */}
-          <View style={styles.menu}>
-            <SectionLabel style={styles.sectionLabel}>Account</SectionLabel>
-            <ProfileMenuItem icon={UserIcon} label="Profile" />
-            <ProfileMenuItem icon={BellIcon} label="Notifications" />
+            {/* Aplicação */}
+            <Text style={styles.sectionLabel}>Aplicação</Text>
+            <View style={styles.section}>
+              <ProfileMenuItem icon={GearIcon} label="Definições" />
+              <ProfileMenuItem icon={QuestionIcon} label="Ajuda & Suporte" />
+              <ProfileMenuItem icon={InfoIcon} label="Sobre" noBorder />
+            </View>
 
-            <SectionLabel style={[styles.sectionLabel, { marginTop: Spacing[5] }]}>App</SectionLabel>
-            <ProfileMenuItem icon={GearIcon} label="Settings" />
-            <ProfileMenuItem icon={QuestionIcon} label="Help & Support" />
-            <ProfileMenuItem icon={InfoIcon} label="About" />
-          </View>
+            {/* Logout — sem borders */}
+            <View style={styles.logoutRow}>
+              <ProfileMenuItem icon={SignOutIcon} label="Terminar sessão" destructive noBorder />
+            </View>
 
-          {/* Footer */}
-          <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing[3] }]}>
-            <View style={styles.divider} />
-            <ProfileMenuItem icon={SignOutIcon} label="Sign out" destructive />
-            <Text style={styles.version}>{APP_NAME} · v1.0</Text>
-          </View>
+            <Text style={styles.versionLabel}>{APP_NAME} · v1.0</Text>
+          </ScrollView>
+
         </Animated.View>
       </Animated.View>
     </Modal>
   );
 });
 
+// ── Tokens ──────────────────────────────────────────────────────────────────
+const BG         = '#111111';
+const DIVIDER    = '#1e1e1e';
+const ROW_ICON   = Colors.white;
+const ROW_CARET  = '#3a3a3a';
+const ICON_MUTED = '#505050';
+
 const styles = StyleSheet.create({
   expandContainer: {
     position: 'absolute',
-    backgroundColor: Colors.sidebarBackground,
+    backgroundColor: BG,
+    overflow: 'hidden',
   },
   content: {
     flex: 1,
   },
+
+  // ── Header (fixo)
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingHorizontal: Spacing[4],
-    paddingBottom: 8,
+    paddingHorizontal: Spacing[6],
+    paddingBottom: Spacing[2],
   },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+
+  // ── Scroll
+  scrollArea: {
+    flex: 1,
   },
-  profileSection: {
-    alignItems: 'center',
-    paddingVertical: Spacing[5],
+  scrollContent: {
     paddingHorizontal: Spacing[6],
   },
+
+  // ── Hero (centrado, sem separador)
+  hero: {
+    alignItems: 'center',
+    paddingTop: Spacing[4],
+    paddingBottom: Spacing[8],
+  },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 999,
-    backgroundColor: Colors.gray800,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing[3],
-    borderWidth: 2,
-    borderColor: Colors.gray700,
+    marginBottom: Spacing[4],
+  },
+  avatarInitials: {
+    fontSize: Typography.size.xl,
+    fontFamily: Typography.fontFamily.bold,
+    color: BG,
+    letterSpacing: 1,
   },
   profileName: {
-    fontSize: Typography.size.lg,
+    fontSize: Typography.size['2xl'],
     fontFamily: Typography.fontFamily.bold,
-    color: Colors.sidebarText,
+    color: Colors.white,
+    letterSpacing: -0.5,
+    lineHeight: 34,
     marginBottom: Spacing[1],
+    textAlign: 'center',
   },
   profileRole: {
     fontSize: Typography.size.sm,
-    color: Colors.sidebarTextMuted,
+    fontFamily: Typography.fontFamily.regular,
+    color: ICON_MUTED,
+    textAlign: 'center',
   },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.sidebarDivider,
-    marginHorizontal: Spacing[5],
-    marginVertical: Spacing[2],
-  },
-  menu: {
-    flex: 1,
-    paddingTop: Spacing[3],
-  },
+
+  // ── Section labels (subtis)
   sectionLabel: {
-    paddingHorizontal: Spacing[5],
-    paddingVertical: Spacing[2],
-    color: Colors.sidebarTextMuted,
+    fontSize: Typography.size.xs,
+    fontFamily: Typography.fontFamily.medium,
+    color: '#3a3a3a',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: Spacing[1],
+    marginTop: Spacing[5],
   },
-  menuItem: {
+
+  // ── Section wrapper (border-top + items com border-bottom)
+  section: {
+    borderTopWidth: 1,
+    borderTopColor: DIVIDER,
+  },
+
+  // ── Menu rows
+  menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing[5],
-    paddingVertical: Spacing[4] - 2,
     gap: Spacing[3],
+    paddingVertical: Spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: DIVIDER,
+  },
+  menuRowNoBorder: {
+    borderBottomWidth: 0,
   },
   menuLabel: {
     flex: 1,
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.medium,
-    color: Colors.sidebarText,
+    color: Colors.white,
   },
   menuLabelDestructive: {
-    color: Colors.gray400,
+    color: '#e05c5c',
   },
-  chevron: {
-    opacity: 0.4,
+
+  // ── Logout (sem borders, espaçamento próprio)
+  logoutRow: {
+    marginTop: Spacing[8],
   },
-  footer: {
-    paddingBottom: Spacing[3],
-  },
-  version: {
+
+  // ── Footer
+  versionLabel: {
+    marginTop: Spacing[8],
     fontSize: Typography.size.xs,
-    color: Colors.sidebarTextMuted,
+    fontFamily: Typography.fontFamily.regular,
+    color: '#2e2e2e',
     textAlign: 'center',
-    paddingTop: Spacing[3],
-    paddingBottom: Spacing[1],
+    letterSpacing: 0.4,
   },
 });
