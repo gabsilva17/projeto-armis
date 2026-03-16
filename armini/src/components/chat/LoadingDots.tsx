@@ -1,4 +1,5 @@
-import { Colors, Spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme';
+import { Spacing } from '@/src/theme';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
@@ -10,7 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-function Dot({ delay }: { delay: number }) {
+function Dot({ delay, color }: { delay: number; color: string }) {
   const opacity = useSharedValue(0.3);
 
   useEffect(() => {
@@ -29,15 +30,16 @@ function Dot({ delay }: { delay: number }) {
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
-  return <Animated.View style={[styles.dot, animatedStyle]} />;
+  return <Animated.View style={[styles.dot, { backgroundColor: color }, animatedStyle]} />;
 }
 
 export function LoadingDots() {
+  const colors = useTheme();
   return (
     <View style={styles.container}>
-      <Dot delay={0} />
-      <Dot delay={150} />
-      <Dot delay={300} />
+      <Dot delay={0} color={colors.gray500} />
+      <Dot delay={150} color={colors.gray500} />
+      <Dot delay={300} color={colors.gray500} />
     </View>
   );
 }
@@ -54,6 +56,5 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: Colors.gray500,
   },
 });

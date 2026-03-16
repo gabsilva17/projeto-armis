@@ -1,5 +1,7 @@
 import { useSidebarStore } from '@/src/stores/useSidebarStore';
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { Spacing, Typography } from '@/src/theme';
+import { themes } from '@/src/theme/colors';
+import { useThemeStore } from '@/src/stores/useThemeStore';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -40,13 +42,14 @@ class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
+      const currentTheme = themes[useThemeStore.getState().themeId];
       return (
-        <View style={errorStyles.container}>
-          <Text style={errorStyles.title}>Something went wrong</Text>
-          <Text style={errorStyles.message}>
+        <View style={[errorStyles.container, { backgroundColor: currentTheme.background }]}> 
+          <Text style={[errorStyles.title, { color: currentTheme.textPrimary }]}>Something went wrong</Text>
+          <Text style={[errorStyles.message, { color: currentTheme.textSecondary }]}> 
             {this.state.error?.message ?? 'An unexpected error occurred.'}
           </Text>
-          <Text style={errorStyles.retry} onPress={this.reset}>
+          <Text style={[errorStyles.retry, { color: currentTheme.textPrimary }]} onPress={this.reset}>
             Tap to retry
           </Text>
         </View>
@@ -62,24 +65,20 @@ const errorStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing[6],
-    backgroundColor: Colors.background,
   },
   title: {
     fontSize: Typography.size.xl,
     fontFamily: Typography.fontFamily.bold,
-    color: Colors.textPrimary,
     marginBottom: Spacing[3],
   },
   message: {
     fontSize: Typography.size.base,
-    color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: Spacing[5],
   },
   retry: {
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textPrimary,
   },
 });
 

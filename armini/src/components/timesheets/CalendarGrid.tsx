@@ -1,4 +1,5 @@
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { useTheme } from '@/src/theme';
+import { Spacing, Typography } from '@/src/theme';
 import type { MonthSummary } from '@/src/types/timesheets';
 import { memo } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -44,25 +45,30 @@ export const CalendarGrid = memo(function CalendarGrid({
   fullGridStyle,
   weekStripStyle,
 }: CalendarGridProps) {
+  const colors = useTheme();
   return (
     <>
       {isLoading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="small" color={Colors.textSecondary} />
-          <Text style={styles.loadingText}>Loading…</Text>
+          <ActivityIndicator size="small" color={colors.textSecondary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading…</Text>
         </View>
       ) : error ? (
         <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={onRefresh} style={styles.retryBtn} activeOpacity={0.75}>
-            <Text style={styles.retryText}>Retry</Text>
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error}</Text>
+          <TouchableOpacity
+            onPress={onRefresh}
+            style={[styles.retryBtn, { backgroundColor: colors.black }]}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.retryText, { color: colors.white }]}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <>
           <Animated.View style={[styles.weekLabels, weekLabelsStyle]}>
             {DAY_LABELS.map((label) => (
-              <Text key={label} style={styles.weekLabel}>{label}</Text>
+              <Text key={label} style={[styles.weekLabel, { color: colors.textMuted }]}>{label}</Text>
             ))}
           </Animated.View>
 
@@ -111,7 +117,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: Typography.size.xs,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     paddingVertical: Spacing[1],
@@ -119,18 +124,16 @@ const styles = StyleSheet.create({
   gridContainer: { overflow: 'hidden' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   loadingBox: { paddingVertical: Spacing[10], alignItems: 'center', gap: Spacing[3] },
-  loadingText: { fontSize: Typography.size.sm, color: Colors.textSecondary },
+  loadingText: { fontSize: Typography.size.sm },
   errorBox: { paddingVertical: Spacing[8], alignItems: 'center', gap: Spacing[4] },
-  errorText: { fontSize: Typography.size.sm, color: Colors.textSecondary, textAlign: 'center' },
+  errorText: { fontSize: Typography.size.sm, textAlign: 'center' },
   retryBtn: {
     paddingHorizontal: Spacing[5],
     paddingVertical: Spacing[2],
-    backgroundColor: Colors.black,
     borderRadius: 8,
   },
   retryText: {
     fontSize: Typography.size.sm,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.white,
   },
 });

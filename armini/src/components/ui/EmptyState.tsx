@@ -1,4 +1,5 @@
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { useTheme } from '@/src/theme';
+import { Spacing, Typography } from '@/src/theme';
 import { FileIcon, type Icon } from 'phosphor-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -9,11 +10,12 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon: Icon = FileIcon, title, subtitle }: EmptyStateProps) {
+  const colors = useTheme();
   return (
     <View style={styles.container}>
-      <Icon size={48} color={Colors.gray300} />
-      <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      <Icon size={48} color={colors.gray300} />
+      <Text style={[styles.title, { color: colors.textMuted }]}>{title}</Text>
+      {subtitle ? <Text style={[styles.subtitle, { color: colors.gray400 }]}>{subtitle}</Text> : null}
     </View>
   );
 }
@@ -29,12 +31,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: Typography.size.md,
     fontFamily: Typography.fontFamily.medium,
-    color: Colors.textMuted,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: Typography.size.sm,
-    color: Colors.gray400,
     textAlign: 'center',
     lineHeight: Typography.size.sm * 1.5,
   },

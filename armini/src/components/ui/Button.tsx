@@ -1,4 +1,6 @@
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { useTheme } from '@/src/theme';
+import { Spacing, Typography } from '@/src/theme';
+import type { ThemeColors } from '@/src/theme';
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
@@ -14,6 +16,19 @@ interface ButtonProps {
   accessibilityLabel?: string;
 }
 
+function getVariantColors(variant: ButtonVariant, colors: ThemeColors) {
+  switch (variant) {
+    case 'primary':
+      return { bg: colors.black, pressedBg: colors.gray800, labelColor: colors.white, borderColor: undefined };
+    case 'secondary':
+      return { bg: colors.white, pressedBg: colors.gray100, labelColor: colors.textPrimary, borderColor: colors.border };
+    case 'destructive':
+      return { bg: colors.white, pressedBg: colors.gray100, labelColor: colors.error, borderColor: colors.border };
+    case 'ghost':
+      return { bg: 'transparent', pressedBg: colors.gray100, labelColor: colors.textPrimary, borderColor: undefined };
+  }
+}
+
 export function Button({
   onPress,
   label,
@@ -23,7 +38,8 @@ export function Button({
   style,
   accessibilityLabel,
 }: ButtonProps) {
-  const variantStyles = variants[variant];
+  const colors = useTheme();
+  const vc = getVariantColors(variant, colors);
 
   return (
     <Pressable
@@ -31,9 +47,12 @@ export function Button({
       disabled={disabled}
       style={({ pressed }) => [
         styles.base,
-        variantStyles.container,
+        {
+          backgroundColor: pressed && !disabled ? vc.pressedBg : vc.bg,
+          borderWidth: vc.borderColor ? 1 : 0,
+          borderColor: vc.borderColor,
+        },
         disabled && styles.disabled,
-        pressed && !disabled && variantStyles.pressed,
         style,
       ]}
       accessibilityRole="button"
@@ -44,8 +63,8 @@ export function Button({
         <Text
           style={[
             styles.label,
-            variantStyles.label,
-            disabled && styles.labelDisabled,
+            { color: vc.labelColor },
+            disabled && { color: colors.gray500 },
           ]}
         >
           {label}
@@ -74,58 +93,4 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-  labelDisabled: {
-    color: Colors.gray500,
-  },
 });
-
-const variants = {
-  primary: StyleSheet.create({
-    container: {
-      backgroundColor: Colors.black,
-    },
-    pressed: {
-      backgroundColor: Colors.gray800,
-    },
-    label: {
-      color: Colors.white,
-    },
-  }),
-  secondary: StyleSheet.create({
-    container: {
-      backgroundColor: Colors.white,
-      borderWidth: 1,
-      borderColor: Colors.border,
-    },
-    pressed: {
-      backgroundColor: Colors.gray100,
-    },
-    label: {
-      color: Colors.textPrimary,
-    },
-  }),
-  destructive: StyleSheet.create({
-    container: {
-      backgroundColor: Colors.white,
-      borderWidth: 1,
-      borderColor: Colors.border,
-    },
-    pressed: {
-      backgroundColor: Colors.gray100,
-    },
-    label: {
-      color: Colors.error,
-    },
-  }),
-  ghost: StyleSheet.create({
-    container: {
-      backgroundColor: 'transparent',
-    },
-    pressed: {
-      backgroundColor: Colors.gray100,
-    },
-    label: {
-      color: Colors.textPrimary,
-    },
-  }),
-};

@@ -1,4 +1,5 @@
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { useTheme } from '@/src/theme';
+import { Spacing, Typography } from '@/src/theme';
 import type { MonthSummary } from '@/src/types/timesheets';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { DAY_LABELS } from './timesheetsConstants';
@@ -16,7 +17,9 @@ interface WeekStripProps {
 }
 
 export function WeekStrip({ week, year, month, monthData, selectedDate, onPress }: WeekStripProps) {
-  const maxHours = week.reduce((max, day) => {
+  const colors = useTheme();
+
+  const maxHours = week.reduce<number>((max, day) => {
     if (day === null) return max;
     const h = monthData?.days[toDateKey(year, month, day)]?.totalHours ?? 0;
     return Math.max(max, h);
@@ -40,36 +43,39 @@ export function WeekStrip({ week, year, month, monthData, selectedDate, onPress 
             key={i}
             style={[
               styles.cell,
-              today && !selected && styles.cellToday,
-              selected && styles.cellSelected,
+              today && !selected && { backgroundColor: colors.gray200 },
+              selected && { backgroundColor: colors.black },
             ]}
             onPress={() => onPress(dateKey)}
             activeOpacity={0.75}
           >
             <Text style={[
               styles.dayLabel,
+              { color: colors.textMuted },
               weekend && styles.dayLabelMuted,
-              selected && styles.textSelected,
+              selected && { color: colors.white },
             ]}>
               {DAY_LABELS[i]}
             </Text>
 
             <Text style={[
               styles.dayNumber,
-              weekend && !selected && styles.dayNumberMuted,
+              { color: colors.textPrimary },
+              weekend && !selected && { color: colors.textMuted },
               today && !selected && styles.dayNumberToday,
-              selected && styles.textSelected,
+              selected && { color: colors.white },
             ]}>
               {day}
             </Text>
 
             {/* Hours bar */}
-            <View style={[styles.barTrack, selected && styles.barTrackSelected]}>
+            <View style={[styles.barTrack, { backgroundColor: colors.gray200 }, selected && styles.barTrackSelected]}>
               {barFill > 0 && (
                 <View
                   style={[
                     styles.barFill,
-                    selected && styles.barFillSelected,
+                    { backgroundColor: colors.black },
+                    selected && { backgroundColor: colors.white },
                     { width: `${barFill * 100}%` as any },
                   ]}
                 />
@@ -78,8 +84,9 @@ export function WeekStrip({ week, year, month, monthData, selectedDate, onPress 
 
             <Text style={[
               styles.hours,
-              selected && styles.hoursSelected,
-              !daySummary && styles.hoursEmpty,
+              { color: colors.textSecondary },
+              selected && { color: colors.gray300 },
+              !daySummary && { color: colors.gray300 },
             ]}>
               {daySummary ? `${hours}h` : '·'}
             </Text>
@@ -104,13 +111,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: Spacing[2],
   },
-  cellSelected: { backgroundColor: Colors.black },
-  cellToday: { backgroundColor: Colors.gray200 },
-
   dayLabel: {
     fontSize: 9,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
@@ -119,33 +122,23 @@ const styles = StyleSheet.create({
   dayNumber: {
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textPrimary,
   },
-  dayNumberMuted: { color: Colors.textMuted },
   dayNumberToday: { fontFamily: Typography.fontFamily.bold },
-
-  textSelected: { color: Colors.white },
 
   barTrack: {
     width: '60%',
     height: 3,
     borderRadius: 2,
-    backgroundColor: Colors.gray200,
     overflow: 'hidden',
   },
   barTrackSelected: { backgroundColor: 'rgba(255,255,255,0.25)' },
   barFill: {
     height: '100%',
     borderRadius: 2,
-    backgroundColor: Colors.black,
   },
-  barFillSelected: { backgroundColor: Colors.white },
 
   hours: {
     fontSize: 10,
-    color: Colors.textSecondary,
     fontFamily: Typography.fontFamily.medium,
   },
-  hoursSelected: { color: Colors.gray300 },
-  hoursEmpty: { color: Colors.gray300 },
 });

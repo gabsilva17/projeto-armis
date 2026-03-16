@@ -14,4 +14,5 @@ export const ROUTES = {
   FINANCES: '/(main)/finances' as const,
   TIMESHEETS: '/(main)/timesheets' as const,
   WHISTLEBLOW: '/(main)/whistleblow' as const,
+  SETTINGS: '/(main)/settings' as const,
 } as const;

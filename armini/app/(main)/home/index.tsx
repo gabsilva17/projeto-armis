@@ -1,72 +1,64 @@
 import { ROUTES } from '@/src/constants/app.constants';
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { Spacing, Typography, useTheme } from '@/src/theme';
 import { useGreeting } from '@/src/hooks/useGreeting';
-import { useTopbarRefresh } from '@/src/hooks/useTopbarRefresh';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
-import { useCallback, useReducer } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
-  const [, forceRender] = useReducer((value: number) => value + 1, 0);
+  const colors = useTheme();
   const { greeting, messageOfDay } = useGreeting();
   const router = useRouter();
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  const handleRefresh = useCallback(() => {
-    forceRender();
-  }, []);
-
-  useTopbarRefresh(handleRefresh);
-
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.greetingSection}>
-        <Text style={styles.kicker}>ARMIS DIGITAL HUB</Text>
-        <Text style={styles.greeting}>{greeting}</Text>
-        <Text style={styles.subtitle}>{messageOfDay}</Text>
+      <View style={[styles.greetingSection, { borderBottomColor: colors.black }]}>
+        <Text style={[styles.kicker, { color: colors.textMuted }]}>ARMIS DIGITAL HUB</Text>
+        <Text style={[styles.greeting, { color: colors.textPrimary }]}>{greeting}</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{messageOfDay}</Text>
       </View>
 
-      <Text style={styles.todayLabel}>{today}</Text>
+      <Text style={[styles.todayLabel, { color: colors.textMuted }]}>{today}</Text>
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Start</Text>
-        <Text style={styles.sectionMeta}>2 workflows available</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Start</Text>
+        <Text style={[styles.sectionMeta, { color: colors.textMuted }]}>2 workflows available</Text>
       </View>
 
-      <View style={styles.actionsRail}>
+      <View style={[styles.actionsRail, { borderTopColor: colors.border }]}> 
         <TouchableOpacity
-          style={styles.actionRow}
+          style={[styles.actionRow, { borderBottomColor: colors.border }]}
           onPress={() => router.push(ROUTES.FINANCES)}
           activeOpacity={0.8}
         >
-          <Text style={styles.actionIndex}>01</Text>
+          <Text style={[styles.actionIndex, { color: colors.textMuted }]}>01</Text>
           <View style={styles.actionBody}>
-            <Text style={styles.actionTitle}>Finances</Text>
-            <Text style={styles.actionDescription}>Submit and manage your invoices</Text>
+            <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>Finances</Text>
+            <Text style={[styles.actionDescription, { color: colors.textSecondary }]}>Submit and manage your invoices</Text>
           </View>
-          <Ionicons name="arrow-forward" size={18} color={Colors.textPrimary} />
+          <Ionicons name="arrow-forward" size={18} color={colors.textPrimary} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.actionRow}
+          style={[styles.actionRow, { borderBottomColor: colors.border }]}
           onPress={() => router.push(ROUTES.TIMESHEETS as Href)}
           activeOpacity={0.8}
         >
-          <Text style={styles.actionIndex}>02</Text>
+          <Text style={[styles.actionIndex, { color: colors.textMuted }]}>02</Text>
           <View style={styles.actionBody}>
-            <Text style={styles.actionTitle}>Timesheets</Text>
-            <Text style={styles.actionDescription}>Track your hours and projects</Text>
+            <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>Timesheets</Text>
+            <Text style={[styles.actionDescription, { color: colors.textSecondary }]}>Track your hours and projects</Text>
           </View>
-          <Ionicons name="arrow-forward" size={18} color={Colors.textPrimary} />
+          <Ionicons name="arrow-forward" size={18} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footnote}>Tap a workflow to continue.</Text>
+      <Text style={[styles.footnote, { color: colors.textMuted }]}>Tap a workflow to continue.</Text>
     </ScrollView>
   );
 }
@@ -74,7 +66,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: Spacing[6],
@@ -84,32 +75,27 @@ const styles = StyleSheet.create({
     paddingTop: Spacing[4],
     paddingBottom: Spacing[4],
     borderBottomWidth: 2,
-    borderBottomColor: Colors.black,
   },
   kicker: {
     fontSize: Typography.size.xs,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textMuted,
     letterSpacing: 1.2,
     marginBottom: Spacing[2],
   },
   greeting: {
     fontSize: Typography.size['3xl'],
     fontFamily: Typography.fontFamily.bold,
-    color: Colors.textPrimary,
     marginBottom: Spacing[1],
     lineHeight: 42,
   },
   subtitle: {
     fontSize: Typography.size.base,
-    color: Colors.textSecondary,
     lineHeight: 22,
   },
   todayLabel: {
     marginTop: Spacing[4],
     fontSize: Typography.size.sm,
     fontFamily: Typography.fontFamily.medium,
-    color: Colors.textMuted,
   },
   sectionHeader: {
     marginTop: Spacing[6],
@@ -120,19 +106,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: Typography.size.xl,
     fontFamily: Typography.fontFamily.bold,
-    color: Colors.textPrimary,
   },
   sectionMeta: {
     fontSize: Typography.size.xs,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   actionsRail: {
     marginTop: Spacing[3],
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
   actionRow: {
     flexDirection: 'row',
@@ -140,13 +123,11 @@ const styles = StyleSheet.create({
     gap: Spacing[3],
     paddingVertical: Spacing[4],
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   actionIndex: {
     width: 28,
     fontSize: Typography.size.sm,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textMuted,
   },
   actionBody: {
     flex: 1,
@@ -155,16 +136,13 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textPrimary,
   },
   actionDescription: {
     fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
   },
   footnote: {
     marginTop: Spacing[4],
     fontSize: Typography.size.sm,
-    color: Colors.textMuted,
     fontFamily: Typography.fontFamily.regular,
   },
 });

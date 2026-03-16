@@ -1,5 +1,5 @@
 import type { EntryInput } from '@/src/hooks/useTimesheets';
-import { Colors, Spacing, Typography } from '@/src/theme';
+import { Colors, Spacing, Typography, useTheme } from '@/src/theme';
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -39,6 +39,7 @@ export function EntryFormModal({
   onDelete,
   onDuplicate,
 }: EntryFormModalProps) {
+  const colors = useTheme();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<EntryInput>(initial);
   const [mounted, setMounted] = useState(false);
@@ -110,23 +111,23 @@ export function EntryFormModal({
     <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={handleClose}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]} />
 
-      <Animated.View style={[styles.container, { transform: [{ translateY: slideY }] }]}>
+      <Animated.View style={[styles.container, { transform: [{ translateY: slideY }], backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}> 
           <TouchableOpacity
             style={styles.headerIconBtn}
             onPress={handleClose}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <XIcon size={22} color={Colors.textPrimary} />
+            <XIcon size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{title}</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{title}</Text>
           <TouchableOpacity
-            style={[styles.saveBtn, (!form.project || !form.task) && styles.saveBtnDisabled]}
+            style={[styles.saveBtn, { backgroundColor: colors.black }, (!form.project || !form.task) && styles.saveBtnDisabled]}
             onPress={handleSave}
             activeOpacity={0.75}
           >
-            <Text style={styles.saveBtnText}>Save</Text>
+            <Text style={[styles.saveBtnText, { color: colors.white }]}>Save</Text>
           </TouchableOpacity>
         </View>
 
@@ -139,33 +140,33 @@ export function EntryFormModal({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Project</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Project</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderBottomColor: colors.border, color: colors.textPrimary }]}
                 value={form.project}
                 onChangeText={(v) => setForm((f) => ({ ...f, project: v }))}
                 placeholder="e.g. ARMIS Platform"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 returnKeyType="next"
               />
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Task</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Task</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderBottomColor: colors.border, color: colors.textPrimary }]}
                 value={form.task}
                 onChangeText={(v) => setForm((f) => ({ ...f, task: v }))}
                 placeholder="e.g. Frontend development"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 returnKeyType="next"
               />
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Hours</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Hours</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderBottomColor: colors.border, color: colors.textPrimary }]}
                 value={form.hours === 0 ? '' : String(form.hours)}
                 onChangeText={(v) => {
                   const n = parseFloat(v);
@@ -174,36 +175,36 @@ export function EntryFormModal({
                 }}
                 keyboardType="decimal-pad"
                 placeholder="8"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 returnKeyType="done"
               />
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Status</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Status</Text>
               <TouchableOpacity
-                style={styles.statusTrigger}
+                style={[styles.statusTrigger, { borderBottomColor: colors.border }]}
                 onPress={() => setStatusOpen((o) => !o)}
                 activeOpacity={0.75}
                 accessibilityRole="button"
               >
-                <Text style={styles.statusTriggerText}>{STATUS_LABELS[form.status]}</Text>
-                <CaretDownIcon size={15} color={Colors.textMuted} style={statusOpen && styles.caretOpen} />
+                <Text style={[styles.statusTriggerText, { color: colors.textPrimary }]}>{STATUS_LABELS[form.status]}</Text>
+                <CaretDownIcon size={15} color={colors.textMuted} style={statusOpen && styles.caretOpen} />
               </TouchableOpacity>
 
               {statusOpen && (
-                <View style={styles.dropdown}>
+                <View style={[styles.dropdown, { borderColor: colors.border, backgroundColor: colors.surface }]}> 
                   {ALL_STATUSES.map((s, i) => (
                     <TouchableOpacity
                       key={s}
-                      style={[styles.dropdownItem, i < ALL_STATUSES.length - 1 && styles.dropdownItemBorder]}
+                      style={[styles.dropdownItem, i < ALL_STATUSES.length - 1 && [styles.dropdownItemBorder, { borderBottomColor: colors.border }]]}
                       onPress={() => { setForm((f) => ({ ...f, status: s })); setStatusOpen(false); }}
                       activeOpacity={0.75}
                     >
-                      <Text style={[styles.dropdownItemText, form.status === s && styles.dropdownItemTextActive]}>
+                      <Text style={[styles.dropdownItemText, { color: colors.textSecondary }, form.status === s && [styles.dropdownItemTextActive, { color: colors.textPrimary }]]}>
                         {STATUS_LABELS[s]}
                       </Text>
-                      {form.status === s && <CheckIcon size={15} color={Colors.textPrimary} weight="bold" />}
+                      {form.status === s && <CheckIcon size={15} color={colors.textPrimary} weight="bold" />}
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -214,18 +215,18 @@ export function EntryFormModal({
 
         {/* Bottom Navbar */}
         {(onDelete || onDuplicate) && (
-          <View style={[styles.bottomNav, { paddingBottom: insets.bottom + Spacing[2] }]}>
+          <View style={[styles.bottomNav, { paddingBottom: insets.bottom + Spacing[2], borderTopColor: colors.border, backgroundColor: colors.background }]}> 
             <View style={styles.bottomNavInner}>
               {onDuplicate && (
                 <TouchableOpacity style={styles.navAction} onPress={handleDuplicate} activeOpacity={0.75}>
-                  <CopySimpleIcon size={22} color={Colors.textSecondary} />
-                  <Text style={styles.navActionText}>Duplicate</Text>
+                  <CopySimpleIcon size={22} color={colors.textSecondary} />
+                  <Text style={[styles.navActionText, { color: colors.textSecondary }]}>Duplicate</Text>
                 </TouchableOpacity>
               )}
               {onDelete && (
                 <TouchableOpacity style={styles.navAction} onPress={handleDelete} activeOpacity={0.75}>
-                  <TrashIcon size={22} color={Colors.error} />
-                  <Text style={[styles.navActionText, { color: Colors.error }]}>Delete</Text>
+                  <TrashIcon size={22} color={colors.error} />
+                  <Text style={[styles.navActionText, { color: colors.error }]}>Delete</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -246,7 +247,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -255,7 +255,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing[5],
     paddingBottom: Spacing[3],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
   },
   headerIconBtn: {
     width: 36,
@@ -266,19 +265,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textPrimary,
   },
   saveBtn: {
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[2],
-    backgroundColor: Colors.black,
     borderRadius: 8,
   },
   saveBtnDisabled: { opacity: 0.4 },
   saveBtnText: {
     fontSize: Typography.size.sm,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.white,
   },
   scrollView: { flex: 1 },
   scrollContent: {
@@ -289,38 +285,31 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: Typography.size.xs,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   input: {
     borderBottomWidth: StyleSheet.hairlineWidth * 2,
-    borderBottomColor: Colors.border,
     paddingVertical: Spacing[2] + 2,
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.regular,
-    color: Colors.textPrimary,
   },
   statusTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth * 2,
-    borderBottomColor: Colors.border,
     paddingVertical: Spacing[2] + 2,
   },
   statusTriggerText: {
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.regular,
-    color: Colors.textPrimary,
   },
   caretOpen: { transform: [{ rotate: '180deg' }] },
   dropdown: {
     marginTop: Spacing[2],
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
     overflow: 'hidden',
   },
   dropdownItem: {
@@ -332,22 +321,17 @@ const styles = StyleSheet.create({
   },
   dropdownItemBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
   },
   dropdownItemText: {
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.regular,
-    color: Colors.textSecondary,
   },
   dropdownItemTextActive: {
-    color: Colors.textPrimary,
     fontFamily: Typography.fontFamily.medium,
   },
   // Bottom nav
   bottomNav: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
     paddingTop: Spacing[3],
   },
   bottomNavInner: {
@@ -364,6 +348,5 @@ const styles = StyleSheet.create({
   navActionText: {
     fontSize: Typography.size.xs,
     fontFamily: Typography.fontFamily.medium,
-    color: Colors.textSecondary,
   },
 });
