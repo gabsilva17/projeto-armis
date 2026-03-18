@@ -9,11 +9,13 @@ interface TextFieldProps extends NativeTextFieldProps {
   label?: string;
   required?: boolean;
   helperText?: string;
+  errorText?: string;
 }
 
-export function TextField({ label, required, helperText, ...inputProps }: TextFieldProps) {
+export function TextField({ label, required, helperText, errorText, ...inputProps }: TextFieldProps) {
   const colors = useTheme();
   const hasLabel = !!label && label.trim().length > 0;
+  const hasError = !!errorText && errorText.trim().length > 0;
 
   return (
     <View style={styles.fieldBlock}>
@@ -26,11 +28,16 @@ export function TextField({ label, required, helperText, ...inputProps }: TextFi
 
       <TextInput
         {...inputProps}
-        style={[styles.input, { borderBottomColor: colors.border, color: colors.textPrimary }, inputProps.style]}
+        style={[
+          styles.input,
+          { borderBottomColor: hasError ? colors.error : colors.border, color: colors.textPrimary },
+          inputProps.style,
+        ]}
         placeholderTextColor={inputProps.placeholderTextColor ?? colors.textMuted}
       />
 
-      {helperText ? <Text style={[styles.helperText, { color: colors.textMuted }]}>{helperText}</Text> : null}
+      {hasError ? <Text style={[styles.helperText, { color: colors.error }]}>{errorText}</Text> : null}
+      {!hasError && helperText ? <Text style={[styles.helperText, { color: colors.textMuted }]}>{helperText}</Text> : null}
     </View>
   );
 }

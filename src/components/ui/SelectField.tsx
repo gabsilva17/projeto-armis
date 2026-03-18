@@ -11,6 +11,7 @@ interface SelectFieldProps {
   placeholder: string;
   options: readonly string[];
   helperText?: string;
+  errorText?: string;
   accessibilityLabel?: string;
   getOptionLabel?: (option: string) => string;
   optionToValue?: (option: string) => string;
@@ -24,6 +25,7 @@ export function SelectField({
   placeholder,
   options,
   helperText,
+  errorText,
   accessibilityLabel,
   getOptionLabel,
   optionToValue,
@@ -32,6 +34,7 @@ export function SelectField({
   const colors = useTheme();
   const [open, setOpen] = useState(false);
   const hasLabel = !!label && label.trim().length > 0;
+  const hasError = !!errorText && errorText.trim().length > 0;
 
   return (
     <View style={styles.fieldBlock}>
@@ -43,7 +46,7 @@ export function SelectField({
       ) : null}
 
       <TouchableOpacity
-        style={[styles.selectTrigger, { borderBottomColor: colors.border }]}
+        style={[styles.selectTrigger, { borderBottomColor: hasError ? colors.error : colors.border }]}
         activeOpacity={0.75}
         onPress={() => setOpen((current) => !current)}
         accessibilityRole="button"
@@ -85,7 +88,8 @@ export function SelectField({
         </View>
       )}
 
-      {helperText ? <Text style={[styles.helperText, { color: colors.textMuted }]}>{helperText}</Text> : null}
+      {hasError ? <Text style={[styles.helperText, { color: colors.error }]}>{errorText}</Text> : null}
+      {!hasError && helperText ? <Text style={[styles.helperText, { color: colors.textMuted }]}>{helperText}</Text> : null}
     </View>
   );
 }

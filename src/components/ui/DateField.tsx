@@ -11,6 +11,7 @@ interface DateFieldProps {
   placeholder: string;
   selectedDate: Date;
   helperText?: string;
+  errorText?: string;
   accessibilityLabel?: string;
   onChangeDate: (date: Date) => void;
 }
@@ -22,12 +23,14 @@ export function DateField({
   placeholder,
   selectedDate,
   helperText,
+  errorText,
   accessibilityLabel,
   onChangeDate,
 }: DateFieldProps) {
   const colors = useTheme();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const hasLabel = !!label && label.trim().length > 0;
+  const hasError = !!errorText && errorText.trim().length > 0;
 
   const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
@@ -48,7 +51,7 @@ export function DateField({
       ) : null}
 
       <TouchableOpacity
-        style={[styles.inputPressable, { borderBottomColor: colors.border }]}
+        style={[styles.inputPressable, { borderBottomColor: hasError ? colors.error : colors.border }]}
         onPress={() => setShowDatePicker(true)}
         activeOpacity={0.75}
         accessibilityRole="button"
@@ -78,7 +81,8 @@ export function DateField({
         <DateTimePicker value={selectedDate} mode="date" display="default" onChange={handleDateChange} />
       ) : null}
 
-      {helperText ? <Text style={[styles.helperText, { color: colors.textMuted }]}>{helperText}</Text> : null}
+      {hasError ? <Text style={[styles.helperText, { color: colors.error }]}>{errorText}</Text> : null}
+      {!hasError && helperText ? <Text style={[styles.helperText, { color: colors.textMuted }]}>{helperText}</Text> : null}
     </View>
   );
 }
