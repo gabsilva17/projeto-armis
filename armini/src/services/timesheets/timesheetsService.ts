@@ -2,6 +2,31 @@ import type { MonthSummary, TimesheetEntry } from '@/src/types/timesheets';
 import { FEATURES } from '@/src/constants/app.constants';
 import { adaptTimesheetEntries, type TimesheetEntryApi } from '../adapters/timesheetsAdapter';
 
+export interface RecentTimesheetDaySnapshot {
+  date: string;
+  weekdayName: string;
+  totalHours: number;
+  entriesCount: number;
+  taskTitles: string[];
+  isToday: boolean;
+}
+
+export interface RecentTimesheetContext {
+  rangeStart: string;
+  rangeEnd: string;
+  workdaysInRange: number;
+  loggedWorkdays: number;
+  missingWorkdays: string[];
+  today: {
+    date: string;
+    isWorkday: boolean;
+    totalHours: number;
+    entriesCount: number;
+    entries: TimesheetEntry[];
+  };
+  daySnapshots: RecentTimesheetDaySnapshot[];
+}
+
 // ---------------------------------------------------------------------------
 // Static mock data — simulates what a real API would return.
 // When FEATURES.BACKEND_CONNECTED = true, replace fetchAllTimesheets with
@@ -76,6 +101,99 @@ function buildMonthSummary(year: number, month: number, entries: TimesheetEntry[
   };
 }
 
+function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isWeekendDate(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function weekdayName(date: Date): string {
+  return date.toLocaleDateString('en-US', { weekday: 'long' });
+}
+
+function groupEntriesByDate(entries: TimesheetEntry[]): Record<string, TimesheetEntry[]> {
+  return entries.reduce<Record<string, TimesheetEntry[]>>((acc, entry) => {
+    if (!acc[entry.date]) {
+      acc[entry.date] = [];
+    }
+    acc[entry.date].push(entry);
+    return acc;
+  }, {});
+}
+
+export function buildRecentTimesheetContext(
+  entries: TimesheetEntry[],
+  days = 15,
+  now = new Date(),
+): RecentTimesheetContext {
+  const safeDays = Math.max(1, days);
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start = new Date(end);
+  start.setDate(end.getDate() - (safeDays - 1));
+
+  const entriesByDate = groupEntriesByDate(entries);
+  const daySnapshots: RecentTimesheetDaySnapshot[] = [];
+  const missingWorkdays: string[] = [];
+
+  let workdaysInRange = 0;
+  let loggedWorkdays = 0;
+
+  for (let i = 0; i < safeDays; i += 1) {
+    const current = new Date(start);
+    current.setDate(start.getDate() + i);
+
+    const currentKey = toLocalDateKey(current);
+    const isToday = currentKey === toLocalDateKey(end);
+    const currentEntries = entriesByDate[currentKey] ?? [];
+    const totalHours = currentEntries.reduce((sum, entry) => sum + entry.hours, 0);
+    const weekend = isWeekendDate(current);
+
+    daySnapshots.push({
+      date: currentKey,
+      weekdayName: weekdayName(current),
+      totalHours,
+      entriesCount: currentEntries.length,
+      taskTitles: currentEntries.map((entry) => entry.task),
+      isToday,
+    });
+
+    if (!weekend) {
+      workdaysInRange += 1;
+      if (currentEntries.length > 0) {
+        loggedWorkdays += 1;
+      } else {
+        missingWorkdays.push(currentKey);
+      }
+    }
+  }
+
+  const todayKey = toLocalDateKey(end);
+  const todayEntries = entriesByDate[todayKey] ?? [];
+  const todayTotalHours = todayEntries.reduce((sum, entry) => sum + entry.hours, 0);
+
+  return {
+    rangeStart: toLocalDateKey(start),
+    rangeEnd: todayKey,
+    workdaysInRange,
+    loggedWorkdays,
+    missingWorkdays,
+    today: {
+      date: todayKey,
+      isWorkday: !isWeekendDate(end),
+      totalHours: todayTotalHours,
+      entriesCount: todayEntries.length,
+      entries: todayEntries,
+    },
+    daySnapshots,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -94,7 +212,6 @@ export async function fetchAllTimesheets(): Promise<TimesheetEntry[]> {
     throw new Error('Backend not implemented yet');
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 400));
   return adaptTimesheetEntries(MOCK_API_ENTRIES);
 }
 

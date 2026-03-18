@@ -15,9 +15,17 @@ import Animated, { withTiming } from 'react-native-reanimated';
 import type { EntryAnimationsValues } from 'react-native-reanimated';
 
 const SLIDE_OFFSET = 80;
+const PAGE_SLIDE_DURATION_MS = 170;
+
+function normalizeRoutePath(route: string) {
+  return route.replace(/\/\([^/]+\)/g, '');
+}
 
 function getRouteIndex(path: string) {
-  const idx = MAIN_ROUTE_ORDER.findIndex((route) => path.includes(route));
+  const idx = MAIN_ROUTE_ORDER.findIndex((route) => {
+    const normalizedRoute = normalizeRoutePath(route);
+    return path.includes(normalizedRoute);
+  });
   return idx === -1 ? 0 : idx;
 }
 
@@ -64,14 +72,13 @@ function MainLayoutInner() {
     return {
       initialValues: {
         originX: targetValues.targetOriginX + slideOffset,
-        opacity: 0,
+        opacity: 1,
       },
       animations: {
         originX: withTiming(targetValues.targetOriginX, {
-          duration: ANIMATION_DURATIONS.pageSlide,
+          duration: PAGE_SLIDE_DURATION_MS,
           easing: EASING.outCubic,
         }),
-        opacity: withTiming(1, { duration: ANIMATION_DURATIONS.pageFade, easing: EASING.outCubic }),
       },
     };
   };

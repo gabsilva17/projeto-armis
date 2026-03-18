@@ -1,7 +1,7 @@
 import { Spacing } from '@/src/theme';
 import { useTheme } from '@/src/theme';
 import { ClockIcon, CurrencyDollarIcon, HouseIcon, type Icon } from 'phosphor-react-native';
-import { Link, usePathname, type Href } from 'expo-router';
+import { usePathname, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +36,7 @@ interface BottomNavBarProps {
 export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
   const colors = useTheme();
   const pathname = usePathname();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -71,24 +72,27 @@ export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
         {NAV_ITEMS.map((item) => {
           const isActive = pathname.includes(item.route);
           return (
-            <Link key={item.route} href={item.href} asChild>
-              <TouchableOpacity
-                style={styles.navItem}
-                activeOpacity={0.7}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-                accessibilityLabel={item.label}
-              >
-                <item.IconComponent
-                  size={22}
-                  color={isActive ? colors.black : colors.gray400}
-                  weight={'bold'}
-                />
-                <Text style={[styles.label, { color: isActive ? colors.black : colors.gray400 }, isActive && styles.labelActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            </Link>
+            <TouchableOpacity
+              key={item.route}
+              style={styles.navItem}
+              activeOpacity={0.7}
+              onPressIn={() => {
+                if (isActive) return;
+                router.replace(item.href);
+              }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={item.label}
+            >
+              <item.IconComponent
+                size={22}
+                color={isActive ? colors.black : colors.gray400}
+                weight={'bold'}
+              />
+              <Text style={[styles.label, { color: isActive ? colors.black : colors.gray400 }, isActive && styles.labelActive]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
           );
         })}
       </View>
