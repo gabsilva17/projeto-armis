@@ -48,17 +48,22 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
 
   const handleSend = async () => {
     if (!canSend) return;
+    const trimmedText = text.trim();
+
     if (pendingImage) {
-      const ok = await onSendImage?.(pendingImage.base64, pendingImage.uri, text.trim());
-      if (ok) {
-        setPendingImage(null);
-        setText('');
-      }
+      const imageToSend = pendingImage;
+
+      // Clear preview immediately to provide submit feedback.
+      setPendingImage(null);
+      setText('');
+
+      await onSendImage?.(imageToSend.base64, imageToSend.uri, trimmedText);
     } else {
-      const ok = await onSend(text.trim());
-      if (ok) {
-        setText('');
-      }
+      setText('');
+      const ok = await onSend(trimmedText);
+
+      // Restore text if nothing was sent.
+      if (!ok) setText(trimmedText);
     }
   };
 

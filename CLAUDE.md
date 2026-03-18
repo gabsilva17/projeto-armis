@@ -111,7 +111,6 @@ app/                          ← Expo Router routes (file-based)
     home/index.tsx
     finances/index.tsx
     timesheets/index.tsx
-    whistleblow/index.tsx
 
 src/
   components/
@@ -132,14 +131,12 @@ src/
     useResponsive.ts
     useTimesheets.ts
   services/
-    adapters/                 ← Adaptadores API->domínio por feature (chat, finances, timesheets)
+    adapters/                 ← Adaptadores API->domínio por feature (chat, timesheets)
     api/
       anthropic.ts            ← Claude HTTP client (fetch direto)
       mcp.ts                  ← Placeholder MCP (não implementado)
     chat/chatService.ts
-    finances/financesService.ts
     timesheets/timesheetsService.ts
-    index.ts
   stores/                     ← Zustand stores
     useChatStore.ts           ← Mensagens + persistência AsyncStorage
     useFinancesStore.ts
@@ -188,7 +185,6 @@ Todas as chamadas à API ficam em `src/services/`, nunca na UI nem nos stores di
 
 - `anthropic.ts` — cliente HTTP para `https://api.anthropic.com/v1/messages`, chave via `process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY`
 - `chatService.ts` — `sendMessage(content, history)`, saudações baseadas na hora
-- `financesService.ts` — envia imagem base64 ao Claude, extrai JSON estruturado (vendor, date, amount, etc.)
 - `timesheetsService.ts` — dados mock; switch via `FEATURES.BACKEND_CONNECTED`
 
 ## Sistema de tema
