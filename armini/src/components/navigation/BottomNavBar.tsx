@@ -1,6 +1,6 @@
 import { Spacing } from '@/src/theme';
 import { useTheme } from '@/src/theme';
-import { ClockIcon, CurrencyDollarIcon, HouseIcon, ShieldCheckIcon, type Icon } from 'phosphor-react-native';
+import { ClockIcon, CurrencyDollarIcon, HouseIcon, type Icon } from 'phosphor-react-native';
 import { Link, usePathname, type Href } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
@@ -24,7 +24,6 @@ const NAV_ITEMS: NavItem[] = [
   { IconComponent: HouseIcon, href: '/(main)/home' as Href, route: '/home', label: 'Home' },
   { IconComponent: CurrencyDollarIcon, href: '/(main)/finances' as Href, route: '/finances', label: 'Finances' },
   { IconComponent: ClockIcon, href: '/(main)/timesheets' as Href, route: '/timesheets', label: 'Timesheets' },
-  { IconComponent: ShieldCheckIcon, href: '/(main)/whistleblow' as Href, route: '/whistleblow', label: 'Whistleblow' },
 ];
 
 const ITEM_WIDTH = 80;

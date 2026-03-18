@@ -30,6 +30,15 @@ interface UseTimesheetsReturn {
 
 let nextId = 1000;
 
+function toDateKey(year: number, month: number, day: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function getTodayDateKey(): string {
+  const now = new Date();
+  return toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 function generateId(): string {
   return `local-${nextId++}`;
 }
@@ -38,7 +47,7 @@ export function useTimesheets(): UseTimesheetsReturn {
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(getTodayDateKey);
 
   const store = useTimesheetsStore();
 
@@ -54,7 +63,9 @@ export function useTimesheets(): UseTimesheetsReturn {
   );
 
   useEffect(() => {
-    setSelectedDate(null);
+    const now = new Date();
+    const isCurrentMonth = currentYear === now.getFullYear() && currentMonth === now.getMonth();
+    setSelectedDate(isCurrentMonth ? toDateKey(now.getFullYear(), now.getMonth(), now.getDate()) : null);
   }, [currentYear, currentMonth]);
 
   const goToPreviousMonth = useCallback(() => {
