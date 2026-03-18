@@ -1,11 +1,10 @@
 import { ChatInput } from './ChatInput';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatDropdownMenu } from './ChatDropdownMenu';
-import { useTheme } from '@/src/theme';
-import { Spacing } from '@/src/theme';
+import { Spacing, useTheme } from '@/src/theme';
 import { useChatStore } from '@/src/stores/useChatStore';
 import { useChatAnimation } from '@/src/hooks/useChatAnimation';
-import { getDefaultSuggestions, getChatGreeting } from '@/src/services/chat/chatService';
+import { getChatGreeting } from '@/src/services/chat/chatService';
 import { DotsThreeVerticalIcon, XIcon } from 'phosphor-react-native';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import {
@@ -30,17 +29,31 @@ interface ChatBubbleContainerProps {
 
 export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerProps>(function ChatBubbleContainer({ onOpenChange }, ref) {
   const colors = useTheme();
-  const { messages, isLoading, error, sendMessage, sendMessageWithImage, clearMessages, clearError } = useChatStore();
+  const {
+    messages,
+    startupSuggestions,
+    isLoading,
+    error,
+    ensureSessionBootstrap,
+    sendMessage,
+    sendMessageWithImage,
+    clearMessages,
+    clearError,
+  } = useChatStore();
   const insets = useSafeAreaInsets();
   const chatGreeting = useMemo(() => getChatGreeting(), []);
-  const suggestions = useMemo(() => getDefaultSuggestions(), []);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [composerText, setComposerText] = useState('');
 
   const { keyboardHeight } = useKeyboard();
   const bottomInset = useSharedValue(insets.bottom);
   useEffect(() => {
     bottomInset.value = insets.bottom;
   }, [insets.bottom, bottomInset]);
+
+  useEffect(() => {
+    void ensureSessionBootstrap();
+  }, [ensureSessionBootstrap]);
   const spacerStyle = useAnimatedStyle(() => ({
     height: keyboardHeight.value > 0 ? keyboardHeight.value : bottomInset.value,
   }));
@@ -136,10 +149,16 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
               isLoading={isLoading}
               greeting={chatGreeting}
               messageOfDay=""
-              suggestions={suggestions}
+              suggestions={startupSuggestions}
               onSuggestionSelect={handleSuggestionSelect}
             />
-            <ChatInput onSend={sendMessage} onSendImage={sendMessageWithImage} disabled={isLoading} />
+            <ChatInput
+              value={composerText}
+              onChangeText={setComposerText}
+              onSend={sendMessage}
+              onSendImage={sendMessageWithImage}
+              disabled={isLoading}
+            />
             <ReAnimated.View style={spacerStyle} />
           </View>
 

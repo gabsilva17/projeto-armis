@@ -49,17 +49,27 @@ export function useTimesheets(): UseTimesheetsReturn {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(getTodayDateKey);
 
-  const store = useTimesheetsStore();
+  const allEntries = useTimesheetsStore((s) => s.allEntries);
+  const hasLoaded = useTimesheetsStore((s) => s.hasLoaded);
+  const isLoading = useTimesheetsStore((s) => s.isLoading);
+  const isRefreshing = useTimesheetsStore((s) => s.isRefreshing);
+  const error = useTimesheetsStore((s) => s.error);
+  const load = useTimesheetsStore((s) => s.load);
+  const refreshStore = useTimesheetsStore((s) => s.refresh);
+  const addEntryStore = useTimesheetsStore((s) => s.addEntry);
+  const editEntryStore = useTimesheetsStore((s) => s.editEntry);
+  const deleteEntryStore = useTimesheetsStore((s) => s.deleteEntry);
+  const getMonthData = useTimesheetsStore((s) => s.getMonthData);
 
   // Load data only once (store guards against duplicate fetches)
   useEffect(() => {
-    store.load();
-  }, []);
+    void load();
+  }, [load]);
 
   // Derive monthData from the store
   const monthData = useMemo(
-    () => store.getMonthData(currentYear, currentMonth),
-    [store.allEntries, store.hasLoaded, currentYear, currentMonth]
+    () => getMonthData(currentYear, currentMonth),
+    [allEntries, hasLoaded, currentYear, currentMonth, getMonthData]
   );
 
   useEffect(() => {
@@ -94,7 +104,7 @@ export function useTimesheets(): UseTimesheetsReturn {
 
   const clearSelection = useCallback(() => setSelectedDate(null), []);
 
-  const refresh = useCallback(() => store.refresh(), [store.refresh]);
+  const refresh = useCallback(() => refreshStore(), [refreshStore]);
 
   const addEntry = useCallback((date: string, input: EntryInput) => {
     const newEntry: TimesheetEntry = {
@@ -102,16 +112,16 @@ export function useTimesheets(): UseTimesheetsReturn {
       date,
       ...input,
     };
-    store.addEntry(newEntry);
-  }, [store.addEntry]);
+    addEntryStore(newEntry);
+  }, [addEntryStore]);
 
   const editEntry = useCallback((id: string, input: EntryInput) => {
-    store.editEntry(id, input);
-  }, [store.editEntry]);
+    editEntryStore(id, input);
+  }, [editEntryStore]);
 
   const deleteEntry = useCallback((id: string) => {
-    store.deleteEntry(id);
-  }, [store.deleteEntry]);
+    deleteEntryStore(id);
+  }, [deleteEntryStore]);
 
   const selectedDay =
     selectedDate && monthData ? (monthData.days[selectedDate] ?? null) : null;
@@ -120,9 +130,9 @@ export function useTimesheets(): UseTimesheetsReturn {
     monthData,
     selectedDay,
     selectedDate,
-    isLoading: store.isLoading,
-    isRefreshing: store.isRefreshing,
-    error: store.error,
+    isLoading,
+    isRefreshing,
+    error,
     currentYear,
     currentMonth,
     goToPreviousMonth,

@@ -11,6 +11,7 @@ export const SIDEBAR_BREAKPOINT = 768;
 
 export const ROUTES = {
   HOME: '/(main)/home' as const,
+  ARMINI_CHAT: '/(main)/whistleblow' as const,
   FINANCES: '/(main)/finances' as const,
   TIMESHEETS: '/(main)/timesheets' as const,
   SETTINGS: '/(main)/settings' as const,
@@ -18,6 +19,7 @@ export const ROUTES = {
 
 export const MAIN_ROUTE_ORDER = [
   ROUTES.HOME,
+  ROUTES.ARMINI_CHAT,
   ROUTES.FINANCES,
   ROUTES.TIMESHEETS,
   ROUTES.SETTINGS,

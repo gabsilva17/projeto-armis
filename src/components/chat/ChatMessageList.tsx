@@ -1,10 +1,10 @@
-import { useTheme } from '@/src/theme';
 import { useRef } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { GreetingHeader } from './GreetingHeader';
 import { SuggestionChips } from './SuggestionChips';
 import { ChatMessage } from './ChatMessage';
 import { LoadingDots } from './LoadingDots';
+import { useTheme } from '@/src/theme';
 import type { Message, SuggestionChip } from '@/src/types/chat.types';
 
 interface ChatMessageListProps {
@@ -26,13 +26,16 @@ export function ChatMessageList({
 }: ChatMessageListProps) {
   const colors = useTheme();
   const listRef = useRef<FlatList>(null);
-  const showSuggestions = messages.length === 0;
 
-  if (showSuggestions) {
+  const hasUserMessage = messages.some((message) => message.sender === 'user');
+  const hasSingleAiBootstrapMessage =
+    messages.length === 1 && messages[0]?.sender === 'ai' && !hasUserMessage;
+
+  if (messages.length === 0) {
     return (
-      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}> 
         <GreetingHeader greeting={greeting} messageOfDay={messageOfDay} />
-        <SuggestionChips chips={suggestions} onSelect={onSuggestionSelect} />
+        {isLoading ? <LoadingDots /> : null}
       </View>
     );
   }
@@ -43,7 +46,14 @@ export function ChatMessageList({
       data={messages}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => <ChatMessage message={item} />}
-      ListFooterComponent={isLoading ? <LoadingDots /> : null}
+      ListFooterComponent={
+        <>
+          {isLoading ? <LoadingDots /> : null}
+          {hasSingleAiBootstrapMessage ? (
+            <SuggestionChips chips={suggestions} onSelect={onSuggestionSelect} />
+          ) : null}
+        </>
+      }
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
       onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}

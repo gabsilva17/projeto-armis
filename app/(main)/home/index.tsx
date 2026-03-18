@@ -27,7 +27,7 @@ export default function HomeScreen() {
 
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Start</Text>
-        <Text style={[styles.sectionMeta, { color: colors.textMuted }]}>2 workflows available</Text>
+        <Text style={[styles.sectionMeta, { color: colors.textMuted }]}>3 workflows available</Text>
       </View>
 
       <View style={[styles.actionsRail, { borderTopColor: colors.border }]}> 
@@ -53,6 +53,19 @@ export default function HomeScreen() {
           <View style={styles.actionBody}>
             <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>Timesheets</Text>
             <Text style={[styles.actionDescription, { color: colors.textSecondary }]}>Track your hours and projects</Text>
+          </View>
+          <Ionicons name="arrow-forward" size={18} color={colors.textPrimary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionRow, { borderBottomColor: colors.border }]}
+          onPress={() => router.push(ROUTES.ARMINI_CHAT as Href)}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.actionIndex, { color: colors.textMuted }]}>03</Text>
+          <View style={styles.actionBody}>
+            <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>Armini</Text>
+            <Text style={[styles.actionDescription, { color: colors.textSecondary }]}>Open the assistant chat</Text>
           </View>
           <Ionicons name="arrow-forward" size={18} color={colors.textPrimary} />
         </TouchableOpacity>

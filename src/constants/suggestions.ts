@@ -3,22 +3,22 @@ import type { SuggestionChip } from '../types/chat.types';
 export const DEFAULT_SUGGESTIONS: SuggestionChip[] = [
   {
     id: '1',
-    label: 'Summarize my week',
-    prompt: 'Can you summarize what I did this week and what I should focus on?',
+    label: 'Review my last 15 days',
+    prompt: 'Can you review my last 15 days and tell me what stands out?',
   },
   {
     id: '2',
-    label: 'Help me write an email',
-    prompt: 'Help me write a professional email to',
+    label: 'Check today entries',
+    prompt: 'What do I already have logged for today, and is anything missing?',
   },
   {
     id: '3',
-    label: 'Expense report tips',
-    prompt: 'What are the best practices for submitting expense reports?',
+    label: 'Find missing workdays',
+    prompt: 'Which workdays in the last 15 days have no entries, excluding weekends?',
   },
   {
     id: '4',
-    label: 'Schedule my day',
-    prompt: 'Help me plan and prioritize my tasks for today.',
+    label: 'Suggest next logs',
+    prompt: 'Suggest what I should log next for the missing workdays, without submitting anything.',
   },
 ];

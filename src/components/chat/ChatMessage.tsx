@@ -1,7 +1,8 @@
-import { useTheme } from '@/src/theme';
-import { Spacing, Typography } from '@/src/theme';
-import React, { useMemo } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Spacing, Typography, useTheme } from '@/src/theme';
+import * as Clipboard from 'expo-clipboard';
+import { CopyIcon } from 'phosphor-react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Markdown from 'react-native-markdown-display';
 import type { Message } from '@/src/types/chat.types';
@@ -13,6 +14,13 @@ interface ChatMessageProps {
 export const ChatMessage = React.memo(function ChatMessage({ message }: ChatMessageProps) {
   const colors = useTheme();
   const isUser = message.sender === 'user';
+  const [isSelectionModalVisible, setIsSelectionModalVisible] = useState(false);
+
+  const handleCopyMessage = async () => {
+    const content = message.content?.trim();
+    if (!content) return;
+    await Clipboard.setStringAsync(content);
+  };
 
   const markdownStyles = useMemo(
     () =>
@@ -136,12 +144,25 @@ export const ChatMessage = React.memo(function ChatMessage({ message }: ChatMess
     [colors],
   );
 
+  const markdownRules = useMemo(
+    () => ({
+      text: (node: { key: string; content: string }, _children: unknown, _parent: unknown, styles: { text: object }, inheritedStyles: object = {}) => (
+        <Text key={node.key} selectable style={[inheritedStyles, styles.text]}>
+          {node.content}
+        </Text>
+      ),
+      textgroup: (node: { key: string }, children: React.ReactNode, _parent: unknown, styles: { textgroup: object }) => (
+        <Text key={node.key} selectable style={styles.textgroup}>
+          {children}
+        </Text>
+      ),
+    }),
+    [],
+  );
+
   if (isUser) {
     return (
-      <Animated.View
-        entering={FadeInDown.duration(200).springify()}
-        style={styles.containerUser}
-      >
+      <Animated.View entering={FadeInDown.duration(200).springify()} style={styles.containerUser}>
         <View
           style={[styles.bubbleUser, { backgroundColor: colors.bubbleUser }]}
           accessibilityRole="text"
@@ -150,7 +171,11 @@ export const ChatMessage = React.memo(function ChatMessage({ message }: ChatMess
           {message.imageUri && (
             <Image source={{ uri: message.imageUri }} style={styles.messageImage} resizeMode="cover" />
           )}
-          {message.content ? <Text style={[styles.textUser, { color: colors.bubbleUserText }]}>{message.content}</Text> : null}
+          {message.content ? (
+            <Text selectable style={[styles.textUser, { color: colors.bubbleUserText }]}>{message.content}</Text>
+          ) : null}
+
+        
         </View>
       </Animated.View>
     );
@@ -163,7 +188,50 @@ export const ChatMessage = React.memo(function ChatMessage({ message }: ChatMess
       accessibilityRole="text"
       accessibilityLabel={`Assistant: ${message.content}`}
     >
-      <Markdown style={markdownStyles}>{message.content}</Markdown>
+      <View>
+        <Markdown style={markdownStyles} rules={markdownRules}>
+          {message.content}
+        </Markdown>
+      </View>
+
+      <View style={styles.aiActionsRow}>
+        <Pressable onPress={() => void handleCopyMessage()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Copy assistant message">
+          <CopyIcon size={16} color={colors.textSecondary} weight="regular" />
+        </Pressable>
+        <Pressable
+          onPress={() => setIsSelectionModalVisible(true)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Open full text selection"
+          style={styles.selectAllButton}
+        >
+          <Text style={[styles.selectAllButtonText, { color: colors.textSecondary }]}>Selecionar texto</Text>
+        </Pressable>
+      </View>
+
+      <Modal
+        visible={isSelectionModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsSelectionModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surface }]}> 
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Selecao de texto</Text>
+              <Pressable onPress={() => setIsSelectionModalVisible(false)} accessibilityRole="button" accessibilityLabel="Close full text selection">
+                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Fechar</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <Text selectable style={[styles.modalText, { color: colors.textPrimary }]}>
+                {message.content}
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </Animated.View>
   );
 });
@@ -195,6 +263,57 @@ const styles = StyleSheet.create({
     marginTop: -Spacing[3],
   },
   textUser: {
+    fontSize: Typography.size.base,
+    lineHeight: Typography.size.base * Typography.lineHeight.normal,
+  },
+  aiActionsRow: {
+    marginTop: Spacing[2],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    columnGap: Spacing[3],
+  },
+  selectAllButton: {
+    paddingVertical: 2,
+  },
+  selectAllButtonText: {
+    fontSize: Typography.size.sm,
+    lineHeight: Typography.size.sm * Typography.lineHeight.normal,
+    textDecorationLine: 'underline',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing[4],
+  },
+  modalCard: {
+    maxHeight: '75%',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[3],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#999999',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    fontSize: Typography.size.base,
+    fontFamily: Typography.fontFamily.semibold,
+  },
+  modalCloseText: {
+    fontSize: Typography.size.sm,
+    lineHeight: Typography.size.sm * Typography.lineHeight.normal,
+  },
+  modalContent: {
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[4],
+  },
+  modalText: {
     fontSize: Typography.size.base,
     lineHeight: Typography.size.base * Typography.lineHeight.normal,
   },

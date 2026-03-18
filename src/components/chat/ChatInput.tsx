@@ -1,11 +1,10 @@
-import { useTheme } from '@/src/theme';
+import { Shadows, Spacing, Typography, useTheme } from '@/src/theme';
 import { ANIMATION_DURATIONS, EASING } from '@/src/constants/animation.constants';
 import { IMAGE_PICKER_SHEET, IMAGE_UPLOAD_CONFIG } from '@/src/constants/image.constants';
 import { HIT_SLOP } from '@/src/constants/ui.constants';
-import { Shadows, Spacing, Typography } from '@/src/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowUpIcon, CameraIcon, ImagesIcon, PaperclipIcon, XIcon } from 'phosphor-react-native';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
@@ -26,14 +25,16 @@ import Animated, {
 } from 'react-native-reanimated';
 
 interface ChatInputProps {
+  value: string;
+  onChangeText: (text: string) => void;
   onSend: (text: string) => Promise<boolean>;
   onSendImage?: (base64: string, uri: string, text: string) => Promise<boolean>;
   disabled?: boolean;
+  focusSignal?: number;
 }
 
-export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputProps) {
+export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled = false, focusSignal = 0 }: ChatInputProps) {
   const colors = useTheme();
-  const [text, setText] = useState('');
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string } | null>(null);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -44,26 +45,31 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
     transform: [{ scale: clipScale.value }],
   }));
 
-  const canSend = (text.trim().length > 0 || pendingImage !== null) && !disabled;
+  const canSend = (value.trim().length > 0 || pendingImage !== null) && !disabled;
+
+  useEffect(() => {
+    if (!focusSignal) return;
+    inputRef.current?.focus();
+  }, [focusSignal]);
 
   const handleSend = async () => {
     if (!canSend) return;
-    const trimmedText = text.trim();
+    const trimmedText = value.trim();
 
     if (pendingImage) {
       const imageToSend = pendingImage;
 
       // Clear preview immediately to provide submit feedback.
       setPendingImage(null);
-      setText('');
+      onChangeText('');
 
       await onSendImage?.(imageToSend.base64, imageToSend.uri, trimmedText);
     } else {
-      setText('');
+      onChangeText('');
       const ok = await onSend(trimmedText);
 
       // Restore text if nothing was sent.
-      if (!ok) setText(trimmedText);
+      if (!ok) onChangeText(trimmedText);
     }
   };
 
@@ -202,8 +208,8 @@ export function ChatInput({ onSend, onSendImage, disabled = false }: ChatInputPr
 
         <TextInput
           ref={inputRef}
-          value={text}
-          onChangeText={setText}
+          value={value}
+          onChangeText={onChangeText}
           placeholder={pendingImage ? 'Add a caption…' : 'Chat with ARMINI…'}
           placeholderTextColor={colors.textMuted}
           multiline
