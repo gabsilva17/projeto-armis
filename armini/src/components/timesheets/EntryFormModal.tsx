@@ -4,7 +4,7 @@ import { TextField } from '@/src/components/ui/TextField';
 import { Colors, Spacing, Typography, useTheme } from '@/src/theme';
 import { HIT_SLOP } from '@/src/constants/ui.constants';
 import { useSlideUpModalAnimation } from '@/src/hooks/useSlideUpModalAnimation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -32,6 +32,74 @@ interface EntryFormModalProps {
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const MAX_PROJECT_LENGTH = 80;
+const MAX_TASK_LENGTH = 120;
+const MIN_HOURS = 0.25;
+const MAX_HOURS = 24;
+
+interface EntryValidationErrors {
+  project?: string;
+  task?: string;
+  hours?: string;
+}
+
+interface EntryTouchedFields {
+  project: boolean;
+  task: boolean;
+  hours: boolean;
+}
+
+const INITIAL_TOUCHED_FIELDS: EntryTouchedFields = {
+  project: false,
+  task: false,
+  hours: false,
+};
+
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function parseHours(value: string): number | null {
+  const normalized = value.replace(',', '.').trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
+
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+}
+
+function validateEntryInput(form: EntryInput, hoursInput: string): EntryValidationErrors {
+  const errors: EntryValidationErrors = {};
+  const normalizedProject = normalizeWhitespace(form.project);
+  const normalizedTask = normalizeWhitespace(form.task);
+  const parsedHours = parseHours(hoursInput);
+
+  if (!normalizedProject) {
+    errors.project = 'Project is required.';
+  } else if (normalizedProject.length > MAX_PROJECT_LENGTH) {
+    errors.project = `Project must have at most ${MAX_PROJECT_LENGTH} characters.`;
+  } else if (!/[\p{L}\p{N}]/u.test(normalizedProject)) {
+    errors.project = 'Project must contain letters or numbers.';
+  }
+
+  if (!normalizedTask) {
+    errors.task = 'Task is required.';
+  } else if (normalizedTask.length > MAX_TASK_LENGTH) {
+    errors.task = `Task must have at most ${MAX_TASK_LENGTH} characters.`;
+  } else if (!/[\p{L}\p{N}]/u.test(normalizedTask)) {
+    errors.task = 'Task must contain letters or numbers.';
+  }
+
+  if (!hoursInput.trim()) {
+    errors.hours = 'Hours is required.';
+  } else if (parsedHours === null) {
+    errors.hours = 'Use a valid number with up to 2 decimals.';
+  } else if (parsedHours < MIN_HOURS || parsedHours > MAX_HOURS) {
+    errors.hours = `Hours must be between ${MIN_HOURS} and ${MAX_HOURS}.`;
+  }
+
+  return errors;
+}
 
 export function EntryFormModal({
   visible,
@@ -45,22 +113,46 @@ export function EntryFormModal({
   const colors = useTheme();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<EntryInput>(initial);
+  const [hoursInput, setHoursInput] = useState(initial.hours === 0 ? '' : String(initial.hours));
+  const [touched, setTouched] = useState<EntryTouchedFields>(INITIAL_TOUCHED_FIELDS);
   const { mounted, slideY, backdropOpacity, animateClose } = useSlideUpModalAnimation({
     visible,
     screenHeight: SCREEN_HEIGHT,
   });
 
+  const validationErrors = useMemo(
+    () => validateEntryInput(form, hoursInput),
+    [form, hoursInput]
+  );
+  const isSaveDisabled = Object.keys(validationErrors).length > 0;
+
   useEffect(() => {
     if (visible) {
       setForm(initial);
+      setHoursInput(initial.hours === 0 ? '' : String(initial.hours));
+      setTouched(INITIAL_TOUCHED_FIELDS);
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClose = () => animateClose(onCancel);
 
   const handleSave = () => {
-    if (!form.project || !form.task) return;
-    onSave(form);
+    if (isSaveDisabled) {
+      setTouched({ project: true, task: true, hours: true });
+      return;
+    }
+
+    const parsedHours = parseHours(hoursInput);
+    if (parsedHours === null) return;
+
+    const sanitized: EntryInput = {
+      project: normalizeWhitespace(form.project),
+      task: normalizeWhitespace(form.task),
+      hours: Number(parsedHours.toFixed(2)),
+      status: form.status,
+    };
+
+    onSave(sanitized);
     animateClose(onCancel);
   };
 
@@ -92,7 +184,7 @@ export function EntryFormModal({
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{title}</Text>
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: colors.black }, (!form.project || !form.task) && styles.saveBtnDisabled]}
+            style={[styles.saveBtn, { backgroundColor: colors.black }, isSaveDisabled && styles.saveBtnDisabled]}
             onPress={handleSave}
             activeOpacity={0.75}
           >
@@ -112,9 +204,15 @@ export function EntryFormModal({
               <TextField
                 label="Project"
                 value={form.project}
-                onChangeText={(v) => setForm((f) => ({ ...f, project: v }))}
+                onChangeText={(v) => {
+                  setTouched((current) => ({ ...current, project: true }));
+                  setForm((f) => ({ ...f, project: v }));
+                }}
+                onBlur={() => setTouched((current) => ({ ...current, project: true }))}
                 placeholder="e.g. ARMIS Platform"
                 returnKeyType="next"
+                maxLength={MAX_PROJECT_LENGTH}
+                errorText={touched.project ? validationErrors.project : undefined}
               />
             </View>
 
@@ -122,24 +220,37 @@ export function EntryFormModal({
               <TextField
                 label="Task"
                 value={form.task}
-                onChangeText={(v) => setForm((f) => ({ ...f, task: v }))}
+                onChangeText={(v) => {
+                  setTouched((current) => ({ ...current, task: true }));
+                  setForm((f) => ({ ...f, task: v }));
+                }}
+                onBlur={() => setTouched((current) => ({ ...current, task: true }))}
                 placeholder="e.g. Frontend development"
                 returnKeyType="next"
+                maxLength={MAX_TASK_LENGTH}
+                errorText={touched.task ? validationErrors.task : undefined}
               />
             </View>
 
             <View style={styles.field}>
               <TextField
                 label="Hours"
-                value={form.hours === 0 ? '' : String(form.hours)}
+                value={hoursInput}
                 onChangeText={(v) => {
-                  const n = parseFloat(v);
-                  if (!isNaN(n)) setForm((f) => ({ ...f, hours: n }));
-                  else if (v === '') setForm((f) => ({ ...f, hours: 0 }));
+                  setTouched((current) => ({ ...current, hours: true }));
+                  setHoursInput(v);
+                  const parsed = parseHours(v);
+                  if (parsed !== null) {
+                    setForm((f) => ({ ...f, hours: parsed }));
+                  } else if (!v.trim()) {
+                    setForm((f) => ({ ...f, hours: 0 }));
+                  }
                 }}
+                onBlur={() => setTouched((current) => ({ ...current, hours: true }))}
                 keyboardType="decimal-pad"
                 placeholder="8"
                 returnKeyType="done"
+                errorText={touched.hours ? validationErrors.hours : undefined}
               />
             </View>
 
