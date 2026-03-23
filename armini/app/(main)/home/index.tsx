@@ -1,15 +1,28 @@
 import { ROUTES } from '@/src/constants/app.constants';
+import { useChatLauncherStore } from '@/src/stores/useChatLauncherStore';
 import { Spacing, Typography, useTheme } from '@/src/theme';
 import { useGreeting } from '@/src/hooks/useGreeting';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, type GestureResponderEvent } from 'react-native';
 
 export default function HomeScreen() {
   const colors = useTheme();
   const { greeting, messageOfDay } = useGreeting();
   const router = useRouter();
+  const requestOpenChat = useChatLauncherStore((state) => state.requestOpenChat);
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const handleArminiPress = (event: GestureResponderEvent) => {
+    const { pageX, pageY } = event.nativeEvent;
+
+    if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+      requestOpenChat(pageX, pageY);
+      return;
+    }
+
+    requestOpenChat();
+  };
 
   return (
     <ScrollView
@@ -59,7 +72,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={[styles.actionRow, { borderBottomColor: colors.border }]}
-          onPress={() => router.push(ROUTES.ARMINI_CHAT as Href)}
+          onPress={handleArminiPress}
           activeOpacity={0.8}
         >
           <Text style={[styles.actionIndex, { color: colors.textMuted }]}>03</Text>

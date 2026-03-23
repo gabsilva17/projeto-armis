@@ -95,6 +95,17 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
       transparent
       animationType="none"
       statusBarTranslucent
+      onShow={() => {
+        // Safety fallback: keep fade-in feel while recovering from stuck opacity states.
+        expandOpacity.setValue(1);
+        setTimeout(() => {
+          Animated.timing(contentOpacity, {
+            toValue: 1,
+            duration: 180,
+            useNativeDriver: false,
+          }).start();
+        }, 340);
+      }}
       onRequestClose={handleClose}
     >
       <Animated.View

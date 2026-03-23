@@ -3,13 +3,14 @@ import { TopBar } from '@/src/components/navigation/TopBar';
 import { ProfileSidebar, type ProfileHandle } from '@/src/components/navigation/ProfileSidebar';
 import { ChatBubbleContainer, type ChatHandle } from '@/src/components/chat/ChatBubbleContainer';
 import { RefreshProvider, useRefresh } from '@/src/contexts/RefreshContext';
+import { useChatLauncherStore } from '@/src/stores/useChatLauncherStore';
 import { useSidebarStore } from '@/src/stores/useSidebarStore';
-import { useTheme } from '@/src/theme';
+import { Spacing, useTheme } from '@/src/theme';
 import { MAIN_ROUTE_ORDER } from '@/src/constants/app.constants';
 import { ANIMATION_DURATIONS, EASING } from '@/src/constants/animation.constants';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, Platform, StyleSheet, View } from 'react-native';
+import { BackHandler, Dimensions, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { withTiming } from 'react-native-reanimated';
 import type { EntryAnimationsValues } from 'react-native-reanimated';
@@ -44,6 +45,9 @@ function MainLayoutInner() {
   const [chatOpen, setChatOpen] = useState(false);
   const { open: openSidebar, close: closeSidebar } = useSidebarStore();
   const insets = useSafeAreaInsets();
+  const chatOpenRequestId = useChatLauncherStore((state) => state.chatOpenRequestId);
+  const pendingOrigin = useChatLauncherStore((state) => state.pendingOrigin);
+  const consumeChatOpenRequest = useChatLauncherStore((state) => state.consumeChatOpenRequest);
 
   const handleProfileOpenChange = (open: boolean) => {
     if (open) {
@@ -96,6 +100,22 @@ function MainLayoutInner() {
     });
     return () => sub.remove();
   }, [pathname, router]);
+
+  useEffect(() => {
+    if (chatOpenRequestId === 0) return;
+
+    const screenWidth = Dimensions.get('window').width;
+    const screenHeight = Dimensions.get('window').height;
+    const fallbackX = screenWidth - Spacing[4] - 22;
+    const fallbackY = insets.top + Spacing[2] + 22;
+    const rawX = pendingOrigin?.x;
+    const rawY = pendingOrigin?.y;
+    const originX = Number.isFinite(rawX) ? Math.max(0, Math.min(rawX as number, screenWidth - 44)) : fallbackX;
+    const originY = Number.isFinite(rawY) ? Math.max(0, Math.min(rawY as number, screenHeight - 44)) : fallbackY;
+
+    chatRef.current?.open(originX, originY);
+    consumeChatOpenRequest();
+  }, [chatOpenRequestId, consumeChatOpenRequest, insets.top, pendingOrigin]);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
