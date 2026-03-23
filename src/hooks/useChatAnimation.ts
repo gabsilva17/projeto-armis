@@ -6,6 +6,7 @@ const BUTTON_SIZE = 44;
 
 export function useChatAnimation() {
   const [chatMounted, setChatMounted] = useState(false);
+  const openingLockRef = useRef(false);
 
   const { width: SW, height: SH } = Dimensions.get('window');
   const originRef = useRef({ x: SW - BUTTON_SIZE - 16, y: 60 });
@@ -48,7 +49,18 @@ export function useChatAnimation() {
     return () => clearTimeout(timer);
   }, [chatMounted]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!chatMounted) {
+      openingLockRef.current = false;
+    }
+  }, [chatMounted]);
+
   const openChat = (originX: number, originY: number) => {
+    if (chatMounted || openingLockRef.current) {
+      return;
+    }
+    openingLockRef.current = true;
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     originRef.current = { x: originX, y: originY };
 
@@ -66,6 +78,7 @@ export function useChatAnimation() {
   };
 
   const closeChat = () => {
+    openingLockRef.current = false;
     contentOpacity.setValue(0);
     const { x, y } = originRef.current;
 
