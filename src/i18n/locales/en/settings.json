@@ -1,0 +1,40 @@
+{
+  "appearance": {
+    "sectionLabel": "APPEARANCE",
+    "title": "Theme",
+    "subtitle": "Choose a color scheme for the app. Your preference is saved automatically."
+  },
+  "themes": {
+    "light": {
+      "label": "Light",
+      "description": "Clean white interface"
+    },
+    "dark": {
+      "label": "Dark",
+      "description": "Easy on the eyes at night"
+    },
+    "blue": {
+      "label": "Blue",
+      "description": "Slate navy accent"
+    },
+    "orange": {
+      "label": "Orange",
+      "description": "Warm amber tones"
+    }
+  },
+  "language": {
+    "sectionLabel": "LANGUAGE",
+    "title": "Language",
+    "subtitle": "Choose the display language. Your preference is saved automatically."
+  },
+  "languages": {
+    "en": {
+      "label": "English",
+      "description": "English"
+    },
+    "pt": {
+      "label": "Português",
+      "description": "Portuguese"
+    }
+  }
+}

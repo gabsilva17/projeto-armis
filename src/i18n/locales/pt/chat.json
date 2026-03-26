@@ -1,0 +1,48 @@
+{
+  "title": "Chat ARMINI",
+  "chatGreeting": {
+    "morning": "Como posso ajudar esta manhã?",
+    "afternoon": "Como posso ajudar esta tarde?",
+    "evening": "Como posso ajudar esta noite?"
+  },
+  "messagesOfDay": {
+    "0": "Como posso ajudar hoje?",
+    "1": "O que gostaria de fazer?",
+    "2": "Pronto quando estiver.",
+    "3": "Vamos ser produtivos.",
+    "4": "Em que está a pensar?",
+    "5": "Aqui para ajudar. Basta perguntar.",
+    "6": "O seu assistente AI está pronto."
+  },
+  "fallbackMessage": "Revi os últimos 15 dias e notei alguns dias úteis sem registos. Posso ajudar a confirmar se essas lacunas são esperadas e sugerir o que registar a seguir. Quer rever juntos?",
+  "deleteChat": "Apagar chat",
+  "chatOptions": "Opções de chat",
+  "inputPlaceholder": "Conversar com ARMINI…",
+  "inputPlaceholderWithImage": "Adicionar legenda…",
+  "sendMessage": "Enviar mensagem",
+  "messageInput": "Campo de mensagem",
+  "dismissError": "Fechar erro de chat",
+  "suggestions": {
+    "reviewLast15Days": {
+      "label": "Rever últimos 15 dias",
+      "prompt": "Podes rever os meus últimos 15 dias e dizer-me o que se destaca?"
+    },
+    "checkTodayEntries": {
+      "label": "Verificar entradas de hoje",
+      "prompt": "O que já tenho registado para hoje e falta alguma coisa?"
+    },
+    "findMissingWorkdays": {
+      "label": "Encontrar dias em falta",
+      "prompt": "Quais dias úteis nos últimos 15 dias não têm registos, excluindo fins de semana?"
+    },
+    "suggestNextLogs": {
+      "label": "Sugerir próximos registos",
+      "prompt": "Sugere o que devo registar para os dias úteis em falta, sem submeter nada."
+    }
+  },
+  "imageAnalysisPrompt": "Por favor analisa esta imagem e diz-me o que vês.",
+  "expenseActions": {
+    "chat": "Inserir por chat",
+    "photo": "Enviar foto"
+  }
+}

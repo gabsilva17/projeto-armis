@@ -14,27 +14,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { ROUTES } from '@/src/constants/app.constants';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 interface OptionItem {
   IconComponent: Icon;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
   href?: Href;
 }
 
 const OPTIONS: OptionItem[] = [
-  { IconComponent: GearIcon, label: 'Settings', description: 'Theme, language and preferences', href: ROUTES.SETTINGS as Href },
-  { IconComponent: BellIcon, label: 'Notifications', description: 'Manage your alerts' },
-  { IconComponent: FolderIcon, label: 'Documents', description: 'View and manage files' },
-  { IconComponent: UsersIcon, label: 'Team', description: 'Colleagues and contacts' },
-  { IconComponent: CalendarCheckIcon, label: 'Approvals', description: 'Pending requests and approvals' },
-  { IconComponent: ShieldCheckIcon, label: 'Privacy', description: 'Data and security settings' },
-  { IconComponent: QuestionIcon, label: 'Help & Support', description: 'FAQs and contact support' },
-  { IconComponent: InfoIcon, label: 'About', description: 'App version and legal info' },
+  { IconComponent: GearIcon, labelKey: 'options.settings.label', descriptionKey: 'options.settings.description', href: ROUTES.SETTINGS as Href },
+  { IconComponent: BellIcon, labelKey: 'options.notifications.label', descriptionKey: 'options.notifications.description' },
+  { IconComponent: FolderIcon, labelKey: 'options.documents.label', descriptionKey: 'options.documents.description' },
+  { IconComponent: UsersIcon, labelKey: 'options.team.label', descriptionKey: 'options.team.description' },
+  { IconComponent: CalendarCheckIcon, labelKey: 'options.approvals.label', descriptionKey: 'options.approvals.description' },
+  { IconComponent: ShieldCheckIcon, labelKey: 'options.privacy.label', descriptionKey: 'options.privacy.description' },
+  { IconComponent: QuestionIcon, labelKey: 'options.helpAndSupport.label', descriptionKey: 'options.helpAndSupport.description' },
+  { IconComponent: InfoIcon, labelKey: 'options.about.label', descriptionKey: 'options.about.description' },
 ];
 
 export default function MoreScreen() {
   const colors = useTheme();
+  const { t } = useTranslation('more');
   const router = useRouter();
 
   return (
@@ -44,17 +46,17 @@ export default function MoreScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>OPTIONS</Text>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>More</Text>
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>{t('sectionLabel')}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('title')}</Text>
         <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-          Additional tools and settings
+          {t('subtitle')}
         </Text>
       </View>
 
       <View style={[styles.optionsList, { borderTopColor: colors.border }]}>
         {OPTIONS.map((option) => (
           <TouchableOpacity
-            key={option.label}
+            key={option.labelKey}
             style={[styles.optionRow, { borderBottomColor: colors.border }]}
             onPress={() => {
               if (option.href) {
@@ -63,14 +65,14 @@ export default function MoreScreen() {
             }}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel={option.label}
+            accessibilityLabel={t(option.labelKey)}
           >
             <View style={[styles.iconWrapper, { backgroundColor: colors.gray100 }]}>
               <option.IconComponent size={20} color={colors.textPrimary} weight="bold" />
             </View>
             <View style={styles.optionBody}>
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>{option.label}</Text>
-              <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>{option.description}</Text>
+              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>{t(option.labelKey)}</Text>
+              <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>{t(option.descriptionKey)}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>

@@ -18,6 +18,7 @@ import { setStatusBarStyle } from 'expo-status-bar';
 import { useRouter, type Href } from 'expo-router';
 import { forwardRef, useImperativeHandle } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CLOSE_TO_NAV_DELAY_MS = 180;
@@ -61,6 +62,7 @@ function ProfileMenuItem({ icon: IconComponent, label, onPress, destructive, noB
 
 export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(function ProfileSidebar({ onOpenChange }, ref) {
   const colors = useTheme();
+  const { t } = useTranslation();
   const themeId = useThemeStore((s) => s.themeId);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -140,7 +142,7 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
               onPress={handleClose}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityRole="button"
-              accessibilityLabel="Fechar perfil"
+              accessibilityLabel={t('sidebar.closeProfile')}
             >
               <XIcon size={20} color={colors.sidebarMuted} />
             </TouchableOpacity>
@@ -158,30 +160,30 @@ export const ProfileSidebar = forwardRef<ProfileHandle, ProfileModalProps>(funct
                 <Text style={[styles.avatarInitials, { color: colors.sidebarBackground }]}>{initials}</Text>
               </View>
               <Text style={[styles.profileName, { color: colors.sidebarText }]}>{USER_NAME}</Text>
-              <Text style={[styles.profileRole, { color: colors.sidebarMuted }]}>Employee · ARMIS</Text>
+              <Text style={[styles.profileRole, { color: colors.sidebarMuted }]}>{t('sidebar.employee')}</Text>
             </View>
 
             {/* Conta */}
-            <Text style={[styles.sectionLabel, { color: colors.sidebarMuted }]}>Conta</Text>
+            <Text style={[styles.sectionLabel, { color: colors.sidebarMuted }]}>{t('sidebar.account')}</Text>
             <View style={[styles.section, { borderTopColor: colors.sidebarDivider }]}>
-              <ProfileMenuItem icon={UserIcon} label="Perfil" />
-              <ProfileMenuItem icon={BellIcon} label="Notificações" noBorder />
+              <ProfileMenuItem icon={UserIcon} label={t('sidebar.profile')} />
+              <ProfileMenuItem icon={BellIcon} label={t('sidebar.notifications')} noBorder />
             </View>
 
             {/* Aplicação */}
-            <Text style={[styles.sectionLabel, { color: colors.sidebarMuted }]}>Aplicação</Text>
+            <Text style={[styles.sectionLabel, { color: colors.sidebarMuted }]}>{t('sidebar.application')}</Text>
             <View style={[styles.section, { borderTopColor: colors.sidebarDivider }]}>
-              <ProfileMenuItem icon={GearIcon} label="Definições" onPress={handleOpenSettings} />
-              <ProfileMenuItem icon={QuestionIcon} label="Ajuda & Suporte" />
-              <ProfileMenuItem icon={InfoIcon} label="Sobre" noBorder />
+              <ProfileMenuItem icon={GearIcon} label={t('sidebar.settings')} onPress={handleOpenSettings} />
+              <ProfileMenuItem icon={QuestionIcon} label={t('sidebar.helpAndSupport')} />
+              <ProfileMenuItem icon={InfoIcon} label={t('sidebar.about')} noBorder />
             </View>
 
             {/* Logout — sem borders */}
             <View style={styles.logoutRow}>
-              <ProfileMenuItem icon={SignOutIcon} label="Terminar sessão" destructive noBorder />
+              <ProfileMenuItem icon={SignOutIcon} label={t('sidebar.logout')} destructive noBorder />
             </View>
 
-            <Text style={[styles.versionLabel, { color: colors.sidebarDivider }]}>{APP_NAME} · v1.0</Text>
+            <Text style={[styles.versionLabel, { color: colors.sidebarDivider }]}>{t('sidebar.version', { appName: APP_NAME })}</Text>
           </ScrollView>
 
         </Animated.View>

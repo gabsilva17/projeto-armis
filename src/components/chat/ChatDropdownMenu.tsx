@@ -2,6 +2,7 @@ import { useTheme } from '@/src/theme';
 import { Spacing, Typography } from '@/src/theme';
 import { TrashIcon } from 'phosphor-react-native';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ChatMenuProps {
@@ -12,6 +13,7 @@ interface ChatMenuProps {
 
 export function ChatDropdownMenu({ isOpen, onClose, onClearMessages }: ChatMenuProps) {
   const colors = useTheme();
+  const { t } = useTranslation('chat');
   const [mounted, setMounted] = useState(false);
   const scale = useRef(new Animated.Value(0.85)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -67,7 +69,7 @@ export function ChatDropdownMenu({ isOpen, onClose, onClearMessages }: ChatMenuP
           }}
         >
           <TrashIcon size={16} color={colors.error} />
-          <Text style={[styles.dropdownItemText, { color: colors.error }]}>Delete chat</Text>
+          <Text style={[styles.dropdownItemText, { color: colors.error }]}>{t('deleteChat')}</Text>
         </TouchableOpacity>
       </Animated.View>
     </>

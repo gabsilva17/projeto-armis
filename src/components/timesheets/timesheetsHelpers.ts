@@ -1,6 +1,8 @@
+import i18n from '@/src/i18n';
+
 export function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('en-GB', {
+  return new Date(year, month - 1, day).toLocaleDateString(i18n.language, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

@@ -1,0 +1,39 @@
+{
+  "sectionLabel": "OPÇÕES",
+  "title": "Mais",
+  "subtitle": "Ferramentas e definições adicionais",
+  "options": {
+    "settings": {
+      "label": "Definições",
+      "description": "Tema, idioma e preferências"
+    },
+    "notifications": {
+      "label": "Notificações",
+      "description": "Gerir os seus alertas"
+    },
+    "documents": {
+      "label": "Documentos",
+      "description": "Ver e gerir ficheiros"
+    },
+    "team": {
+      "label": "Equipa",
+      "description": "Colegas e contactos"
+    },
+    "approvals": {
+      "label": "Aprovações",
+      "description": "Pedidos e aprovações pendentes"
+    },
+    "privacy": {
+      "label": "Privacidade",
+      "description": "Dados e definições de segurança"
+    },
+    "helpAndSupport": {
+      "label": "Ajuda & Suporte",
+      "description": "FAQs e contacto de suporte"
+    },
+    "about": {
+      "label": "Sobre",
+      "description": "Versão da app e informações legais"
+    }
+  }
+}

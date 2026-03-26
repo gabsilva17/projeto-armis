@@ -6,8 +6,8 @@ import { EntryFormModal } from '@/src/components/timesheets/EntryFormModal';
 import {
   EMPTY_INPUT,
   getStatusColor,
-  STATUS_LABELS,
 } from '@/src/components/timesheets/timesheetsConstants';
+import { useTranslation } from 'react-i18next';
 import {
   buildCalendarGrid,
   getWeekRowForDay,
@@ -106,6 +106,7 @@ function InteractiveCalendarSection({
   deleteEntry,
   colors,
 }: InteractiveCalendarSectionProps) {
+  const { t } = useTranslation('timesheets');
   const {
     calendarSwipeStyle,
     gridContainerStyle,
@@ -161,10 +162,10 @@ function InteractiveCalendarSection({
           )}
 
           <View style={styles.legend}>
-            {(Object.keys(STATUS_LABELS) as TimesheetEntryStatus[]).map((s) => (
+            {(['draft', 'pending', 'approved'] as TimesheetEntryStatus[]).map((s) => (
               <View key={s} style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: getStatusColor(s, colors) }]} />
-                <Text style={[styles.legendLabel, { color: colors.textSecondary }]}>{STATUS_LABELS[s]}</Text>
+                <Text style={[styles.legendLabel, { color: colors.textSecondary }]}>{t(`status.${s}`)}</Text>
               </View>
             ))}
           </View>
@@ -176,6 +177,7 @@ function InteractiveCalendarSection({
 
 export default function TimesheetsScreen() {
   const colors = useTheme();
+  const { t } = useTranslation('timesheets');
   const {
     monthData,
     selectedDay,
@@ -195,7 +197,7 @@ export default function TimesheetsScreen() {
   } = useTimesheets();
 
   const [formVisible, setFormVisible] = useState(false);
-  const [formTitle, setFormTitle] = useState('Add Entry');
+  const [formTitle, setFormTitle] = useState('');
   const [formInitial, setFormInitial] = useState<EntryInput>(EMPTY_INPUT);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showInteractiveSection, setShowInteractiveSection] = useState(false);
@@ -229,14 +231,14 @@ export default function TimesheetsScreen() {
   function openAddForm() {
     setEditingId(null);
     setFormInitial(EMPTY_INPUT);
-    setFormTitle('Add Entry');
+    setFormTitle(t('form.addEntry'));
     setFormVisible(true);
   }
 
   function openEditForm(entry: TimesheetEntry) {
     setEditingId(entry.id);
     setFormInitial({ project: entry.project, task: entry.task, hours: entry.hours, status: entry.status });
-    setFormTitle('Edit Entry');
+    setFormTitle(t('form.editEntry'));
     setFormVisible(true);
   }
 

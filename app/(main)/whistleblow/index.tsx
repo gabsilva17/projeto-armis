@@ -10,9 +10,11 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 export default function ArminiChatScreen() {
   const colors = useTheme();
+  const { t } = useTranslation('chat');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {
@@ -46,19 +48,19 @@ export default function ArminiChatScreen() {
           onPress={() => router.back()}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common:back')}
         >
           <ArrowLeftIcon size={20} color={colors.textPrimary} weight="bold" />
         </TouchableOpacity>
 
-        <Text style={[styles.title, { color: colors.textPrimary }]}>ARMINI Chat</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t('title')}</Text>
 
         <TouchableOpacity
           style={styles.headerButton}
           onPress={() => setMenuOpen((v) => !v)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel="Chat options"
+          accessibilityLabel={t('chatOptions')}
         >
           <DotsThreeVerticalIcon size={20} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -68,8 +70,8 @@ export default function ArminiChatScreen() {
         {error ? (
           <View style={[styles.errorBanner, { backgroundColor: colors.surface, borderColor: colors.error }]}> 
             <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
-            <TouchableOpacity onPress={clearError} accessibilityRole="button" accessibilityLabel="Dismiss chat error">
-              <Text style={[styles.errorDismiss, { color: colors.error }]}>Dismiss</Text>
+            <TouchableOpacity onPress={clearError} accessibilityRole="button" accessibilityLabel={t('dismissError')}>
+              <Text style={[styles.errorDismiss, { color: colors.error }]}>{t('common:dismiss')}</Text>
             </TouchableOpacity>
           </View>
         ) : null}

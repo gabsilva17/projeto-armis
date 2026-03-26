@@ -1,3 +1,5 @@
+import '@/src/i18n';
+import i18n from '@/src/i18n';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { useSidebarStore } from '@/src/stores/useSidebarStore';
 import { Spacing, Typography } from '@/src/theme';
@@ -46,12 +48,12 @@ class ErrorBoundary extends React.Component<
       const currentTheme = themes[useThemeStore.getState().themeId];
       return (
         <View style={[errorStyles.container, { backgroundColor: currentTheme.background }]}> 
-          <Text style={[errorStyles.title, { color: currentTheme.textPrimary }]}>Something went wrong</Text>
-          <Text style={[errorStyles.message, { color: currentTheme.textSecondary }]}> 
-            {this.state.error?.message ?? 'An unexpected error occurred.'}
+          <Text style={[errorStyles.title, { color: currentTheme.textPrimary }]}>{i18n.t('error.somethingWentWrong')}</Text>
+          <Text style={[errorStyles.message, { color: currentTheme.textSecondary }]}>
+            {this.state.error?.message ?? i18n.t('error.generic')}
           </Text>
           <Text style={[errorStyles.retry, { color: currentTheme.textPrimary }]} onPress={this.reset}>
-            Tap to retry
+            {i18n.t('error.tapToRetry')}
           </Text>
         </View>
       );

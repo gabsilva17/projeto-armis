@@ -1,0 +1,39 @@
+{
+  "sectionLabel": "OPTIONS",
+  "title": "More",
+  "subtitle": "Additional tools and settings",
+  "options": {
+    "settings": {
+      "label": "Settings",
+      "description": "Theme, language and preferences"
+    },
+    "notifications": {
+      "label": "Notifications",
+      "description": "Manage your alerts"
+    },
+    "documents": {
+      "label": "Documents",
+      "description": "View and manage files"
+    },
+    "team": {
+      "label": "Team",
+      "description": "Colleagues and contacts"
+    },
+    "approvals": {
+      "label": "Approvals",
+      "description": "Pending requests and approvals"
+    },
+    "privacy": {
+      "label": "Privacy",
+      "description": "Data and security settings"
+    },
+    "helpAndSupport": {
+      "label": "Help & Support",
+      "description": "FAQs and contact support"
+    },
+    "about": {
+      "label": "About",
+      "description": "App version and legal info"
+    }
+  }
+}

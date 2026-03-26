@@ -1,0 +1,40 @@
+{
+  "appearance": {
+    "sectionLabel": "APARÊNCIA",
+    "title": "Tema",
+    "subtitle": "Escolha um esquema de cores para a app. A sua preferência é guardada automaticamente."
+  },
+  "themes": {
+    "light": {
+      "label": "Claro",
+      "description": "Interface branca e limpa"
+    },
+    "dark": {
+      "label": "Escuro",
+      "description": "Confortável à noite"
+    },
+    "blue": {
+      "label": "Azul",
+      "description": "Destaque azul-marinho"
+    },
+    "orange": {
+      "label": "Laranja",
+      "description": "Tons âmbar quentes"
+    }
+  },
+  "language": {
+    "sectionLabel": "IDIOMA",
+    "title": "Idioma",
+    "subtitle": "Escolha o idioma de apresentação. A sua preferência é guardada automaticamente."
+  },
+  "languages": {
+    "en": {
+      "label": "English",
+      "description": "Inglês"
+    },
+    "pt": {
+      "label": "Português",
+      "description": "Português"
+    }
+  }
+}

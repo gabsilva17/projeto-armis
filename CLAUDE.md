@@ -98,6 +98,7 @@ Use cases principais:
 - React Native Reanimated + Gesture Handler para animações
 - Phosphor Icons (`phosphor-react-native`) com `weight="fill"`
 - `@react-native-community/datetimepicker` para seleção nativa de data nos formulários
+- **i18next** + `react-i18next` + `expo-localization` para internacionalização (EN/PT)
 - API backend: REST .NET Core já existente do Digital Hub
 - LLM: Claude Haiku (`claude-haiku-4-5-20251001`) via chamada HTTP direta à Anthropic API (POC)
 
@@ -138,9 +139,16 @@ src/
       mcp.ts                  ← Placeholder MCP (não implementado)
     chat/chatService.ts
     timesheets/timesheetsService.ts
+  i18n/
+    index.ts                  ← Inicialização i18next (importado em _layout.tsx)
+    types.ts                  ← Module augmentation para i18next
+    locales/
+      en/                     ← Traduções EN (common, home, finances, timesheets, chat, settings, more)
+      pt/                     ← Traduções PT (mesmos ficheiros)
   stores/                     ← Zustand stores
     useChatStore.ts           ← Mensagens + persistência AsyncStorage
     useFinancesStore.ts
+    useLanguageStore.ts       ← Idioma do utilizador (EN/PT) + persistência AsyncStorage
     useSidebarStore.ts
     useTimesheetsStore.ts
   theme/
@@ -174,8 +182,43 @@ Cada store é um ficheiro em `src/stores/`, hook-based, sem Redux/Context pesado
 | `useTimesheetsStore` | `allEntries[]`, `isLoading`, `hasLoaded` | Não |
 | `useSidebarStore` | `isOpen` | Não |
 | `useQuickActionsStore` | `actions[]` (QuickAction) | AsyncStorage |
+| `useLanguageStore` | `language` ('en' \| 'pt') | AsyncStorage |
 
 `useTimesheetsStore` expõe `getMonthData(year, month)` que deriva `MonthSummary` do estado.
+
+## Internacionalização (i18n)
+
+Toda a UI suporta EN e PT via `i18next` + `react-i18next`.
+
+### Setup
+- `src/i18n/index.ts` inicializa o i18next — importado no topo de `app/_layout.tsx`
+- Traduções em JSON: `src/i18n/locales/{en,pt}/{common,home,finances,timesheets,chat,settings,more}.json`
+- `useLanguageStore` persiste a preferência; default = idioma do dispositivo (`expo-localization`)
+
+### Padrões de uso
+```ts
+// Em componentes funcionais — hook com namespace
+const { t } = useTranslation('timesheets');
+t('form.project')                         // chave do namespace atual
+t('common:save')                          // cross-namespace com prefixo
+t('dayDetail.hoursLogged', { totalHours }) // interpolação {{variable}}
+t('quickActions.count', { count: 3 })     // pluralização (_one / _other)
+
+// Em funções fora de componentes (validação, services)
+import i18n from '@/src/i18n';
+i18n.t('timesheets:validation.projectRequired')
+
+// Em class components (ErrorBoundary)
+import i18n from '@/src/i18n';
+i18n.t('error.somethingWentWrong')
+```
+
+### Regras
+- **Nunca hardcodar texto de UI.** Todas as strings visíveis ao utilizador devem estar nos JSON de locale.
+- Prompts de LLM (system messages para a API) **NÃO são traduzidos** — ficam em inglês.
+- Quick actions criadas pelo utilizador guardam `title`/`description` como texto livre; só as default actions usam `t()`.
+- Datas usam `Intl.DateTimeFormat` com `i18n.language` como locale.
+- Para adicionar um novo idioma: criar pasta `src/i18n/locales/{code}/`, copiar os JSONs, traduzir, registar em `src/i18n/index.ts` e adicionar opção em `useLanguageStore`.
 
 ## Camada de serviços
 Todas as chamadas à API ficam em `src/services/`, nunca na UI nem nos stores diretamente.

@@ -1,0 +1,46 @@
+{
+  "kicker": "ARMIS DIGITAL HUB",
+  "footnote": "Tap a workflow to continue.",
+  "greeting": {
+    "morning": "Good morning, {{userName}}",
+    "afternoon": "Good afternoon, {{userName}}",
+    "evening": "Good evening, {{userName}}"
+  },
+  "quickActions": {
+    "title": "Quick Actions",
+    "count_one": "{{count}} action",
+    "count_other": "{{count}} actions",
+    "addAction": "Add quick action",
+    "longPressHint": "Long press to edit or delete",
+    "defaultFinancesTitle": "Finances",
+    "defaultFinancesDesc": "Submit and manage your invoices",
+    "defaultTimesheetsTitle": "Timesheets",
+    "defaultTimesheetsDesc": "Track your hours and projects",
+    "defaultArminiTitle": "Armini",
+    "defaultArminiDesc": "Open the assistant chat"
+  },
+  "quickActionForm": {
+    "newTitle": "New Quick Action",
+    "editTitle": "Edit Quick Action",
+    "titleLabel": "Title",
+    "titlePlaceholder": "e.g. Submit invoice",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Optional short description",
+    "actionTypeLabel": "Action type",
+    "actionTypePlaceholder": "Select action type",
+    "destinationLabel": "Destination",
+    "destinationPlaceholder": "Select screen",
+    "chatPromptLabel": "Chat prompt",
+    "chatPromptPlaceholder": "e.g. Show me this week's hours",
+    "actionTypes": {
+      "navigate": "Navigate to screen",
+      "chat-prompt": "Send chat prompt",
+      "open-chat": "Open assistant chat"
+    },
+    "routes": {
+      "finances": "Finances",
+      "timesheets": "Timesheets",
+      "settings": "Settings"
+    }
+  }
+}

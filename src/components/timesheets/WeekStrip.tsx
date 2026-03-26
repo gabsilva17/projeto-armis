@@ -2,7 +2,8 @@ import { useTheme } from '@/src/theme';
 import { Spacing, Typography } from '@/src/theme';
 import type { MonthSummary } from '@/src/types/timesheets';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { DAY_LABELS } from './timesheetsConstants';
+import { useTranslation } from 'react-i18next';
+import { DAY_LABEL_KEYS } from './timesheetsConstants';
 import { isToday, isWeekend, toDateKey } from './timesheetsHelpers';
 
 export const COMPACT_STRIP_HEIGHT = 80;
@@ -18,6 +19,7 @@ interface WeekStripProps {
 
 export function WeekStrip({ week, year, month, monthData, selectedDate, onPress }: WeekStripProps) {
   const colors = useTheme();
+  const { t } = useTranslation('timesheets');
 
   const maxHours = week.reduce<number>((max, day) => {
     if (day === null) return max;
@@ -55,7 +57,7 @@ export function WeekStrip({ week, year, month, monthData, selectedDate, onPress 
               weekend && styles.dayLabelMuted,
               selected && { color: colors.white },
             ]}>
-              {DAY_LABELS[i]}
+              {t(`days.${DAY_LABEL_KEYS[i]}`)}
             </Text>
 
             <Text style={[

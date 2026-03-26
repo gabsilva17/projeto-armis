@@ -6,7 +6,8 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 import { DayCell } from './DayCell';
 import { WeekStrip } from './WeekStrip';
-import { DAY_LABELS } from './timesheetsConstants';
+import { useTranslation } from 'react-i18next';
+import { DAY_LABEL_KEYS } from './timesheetsConstants';
 import { toDateKey } from './timesheetsHelpers';
 import type { ViewStyle } from 'react-native';
 
@@ -46,12 +47,13 @@ export const CalendarGrid = memo(function CalendarGrid({
   weekStripStyle,
 }: CalendarGridProps) {
   const colors = useTheme();
+  const { t } = useTranslation('timesheets');
   return (
     <>
       {isLoading ? (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="small" color={colors.textSecondary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading…</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t('common:loading')}</Text>
         </View>
       ) : error ? (
         <View style={styles.errorBox}>
@@ -61,14 +63,14 @@ export const CalendarGrid = memo(function CalendarGrid({
             style={[styles.retryBtn, { backgroundColor: colors.black }]}
             activeOpacity={0.75}
           >
-            <Text style={[styles.retryText, { color: colors.white }]}>Retry</Text>
+            <Text style={[styles.retryText, { color: colors.white }]}>{t('common:retry')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <>
           <Animated.View style={[styles.weekLabels, weekLabelsStyle]}>
-            {DAY_LABELS.map((label) => (
-              <Text key={label} style={[styles.weekLabel, { color: colors.textMuted }]}>{label}</Text>
+            {DAY_LABEL_KEYS.map((key) => (
+              <Text key={key} style={[styles.weekLabel, { color: colors.textMuted }]}>{t(`days.${key}`)}</Text>
             ))}
           </Animated.View>
 

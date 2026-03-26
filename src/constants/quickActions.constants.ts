@@ -3,39 +3,33 @@ import { ROUTES } from './app.constants';
 
 export const ACTION_TYPE_OPTIONS = ['navigate', 'chat-prompt', 'open-chat'] as const;
 
-export const ACTION_TYPE_LABELS: Record<string, string> = {
-  navigate: 'Navigate to screen',
-  'chat-prompt': 'Send chat prompt',
-  'open-chat': 'Open assistant chat',
-};
-
-export const NAVIGABLE_ROUTES = [
-  { value: ROUTES.FINANCES, label: 'Finances' },
-  { value: ROUTES.TIMESHEETS, label: 'Timesheets' },
-  { value: ROUTES.SETTINGS, label: 'Settings' },
+export const NAVIGABLE_ROUTE_KEYS = [
+  { value: ROUTES.FINANCES, labelKey: 'finances' },
+  { value: ROUTES.TIMESHEETS, labelKey: 'timesheets' },
+  { value: ROUTES.SETTINGS, labelKey: 'settings' },
 ] as const;
 
-export const NAVIGABLE_ROUTE_VALUES = NAVIGABLE_ROUTES.map((r) => r.value) as unknown as readonly string[];
+export const NAVIGABLE_ROUTE_VALUES = NAVIGABLE_ROUTE_KEYS.map((r) => r.value) as unknown as readonly string[];
 
 export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   {
     id: 'default-finances',
-    title: 'Finances',
-    description: 'Submit and manage your invoices',
+    title: '',
+    description: '',
     type: 'navigate',
     route: ROUTES.FINANCES,
   },
   {
     id: 'default-timesheets',
-    title: 'Timesheets',
-    description: 'Track your hours and projects',
+    title: '',
+    description: '',
     type: 'navigate',
     route: ROUTES.TIMESHEETS,
   },
   {
     id: 'default-armini',
-    title: 'Armini',
-    description: 'Open the assistant chat',
+    title: '',
+    description: '',
     type: 'open-chat',
   },
 ];

@@ -2,12 +2,7 @@ import type { EntryInput } from '@/src/hooks/useTimesheets';
 import type { ThemeColors } from '@/src/theme';
 import type { TimesheetEntryStatus } from '@/src/types/timesheets';
 
-export const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-export const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const DAY_LABEL_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 export const STATUS_COLOR_KEYS: Record<TimesheetEntryStatus, keyof ThemeColors> = {
   approved: 'black',
@@ -19,16 +14,9 @@ export function getStatusColor(status: TimesheetEntryStatus, colors: ThemeColors
   return colors[STATUS_COLOR_KEYS[status]];
 }
 
-export const STATUS_LABELS: Record<TimesheetEntryStatus, string> = {
-  approved: 'Approved',
-  pending: 'Pending',
-  draft: 'Draft',
-};
-
 export const ALL_STATUSES: TimesheetEntryStatus[] = ['draft', 'pending', 'approved'];
 
 export const CELL_SIZE = 44;
-// Each row = minHeight (44) + marginVertical (2 top + 2 bottom)
 export const ROW_HEIGHT = CELL_SIZE + 4;
 export const SWIPE_THRESHOLD = 60;
 
