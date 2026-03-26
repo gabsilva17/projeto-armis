@@ -14,6 +14,7 @@ export const ROUTES = {
   ARMINI_CHAT: '/(main)/whistleblow' as const,
   FINANCES: '/(main)/finances' as const,
   TIMESHEETS: '/(main)/timesheets' as const,
+  MORE: '/(main)/more' as const,
   SETTINGS: '/(main)/settings' as const,
 } as const;
 
@@ -22,5 +23,6 @@ export const MAIN_ROUTE_ORDER = [
   ROUTES.ARMINI_CHAT,
   ROUTES.FINANCES,
   ROUTES.TIMESHEETS,
+  ROUTES.MORE,
   ROUTES.SETTINGS,
 ] as const;

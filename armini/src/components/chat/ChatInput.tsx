@@ -2,12 +2,12 @@ import { Shadows, Spacing, Typography, useTheme } from '@/src/theme';
 import { ANIMATION_DURATIONS, EASING } from '@/src/constants/animation.constants';
 import { IMAGE_PICKER_SHEET, IMAGE_UPLOAD_CONFIG } from '@/src/constants/image.constants';
 import { HIT_SLOP } from '@/src/constants/ui.constants';
+import { useAlert } from '@/src/contexts/AlertContext';
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowUpIcon, CameraIcon, ImagesIcon, PaperclipIcon, XIcon } from 'phosphor-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
-  Alert,
   Image,
   Platform,
   Pressable,
@@ -35,6 +35,7 @@ interface ChatInputProps {
 
 export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled = false, focusSignal = 0 }: ChatInputProps) {
   const colors = useTheme();
+  const alert = useAlert();
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string } | null>(null);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -79,7 +80,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission required', 'Camera access is needed to take a photo.');
+          alert('Permission required', 'Camera access is needed to take a photo.');
           return;
         }
       }
@@ -92,7 +93,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
         setPendingImage({ uri: result.assets[0].uri, base64: result.assets[0].base64 ?? '' });
       }
     } catch (err: unknown) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Could not open camera.');
+      alert('Error', err instanceof Error ? err.message : 'Could not open camera.');
     }
   };
 
@@ -102,7 +103,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission required', 'Photo library access is needed.');
+          alert('Permission required', 'Photo library access is needed.');
           return;
         }
       }
@@ -115,7 +116,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
         setPendingImage({ uri: result.assets[0].uri, base64: result.assets[0].base64 ?? '' });
       }
     } catch (err: unknown) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Could not open photo library.');
+      alert('Error', err instanceof Error ? err.message : 'Could not open photo library.');
     }
   };
 
@@ -188,23 +189,26 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
 
       {/* Input row */}
       <View style={styles.row}>
-        <Pressable
-          onPress={handleClipPress}
-          onPressIn={() => { clipScale.value = withTiming(0.82, { duration: ANIMATION_DURATIONS.pressIn, easing: EASING.outCubic }); }}
-          onPressOut={() => { clipScale.value = withTiming(1, { duration: ANIMATION_DURATIONS.pressOut, easing: EASING.outCubic }); }}
-          disabled={disabled}
-          hitSlop={HIT_SLOP.md}
-          accessibilityRole="button"
-          accessibilityLabel="Attach image"
-        >
-          <Animated.View style={[styles.clipButton, clipAnimStyle]}>
-            <PaperclipIcon
-              size={22}
-              color={attachMenuOpen ? colors.textPrimary : disabled ? colors.gray400 : colors.textSecondary}
-              weight={attachMenuOpen ? 'fill' : 'regular'}
-            />
-          </Animated.View>
-        </Pressable>
+        {/* Attach button — temporariamente oculto a pedido (lógica preservada) */}
+        {false && (
+          <Pressable
+            onPress={handleClipPress}
+            onPressIn={() => { clipScale.value = withTiming(0.82, { duration: ANIMATION_DURATIONS.pressIn, easing: EASING.outCubic }); }}
+            onPressOut={() => { clipScale.value = withTiming(1, { duration: ANIMATION_DURATIONS.pressOut, easing: EASING.outCubic }); }}
+            disabled={disabled}
+            hitSlop={HIT_SLOP.md}
+            accessibilityRole="button"
+            accessibilityLabel="Attach image"
+          >
+            <Animated.View style={[styles.clipButton, clipAnimStyle]}>
+              <PaperclipIcon
+                size={22}
+                color={attachMenuOpen ? colors.textPrimary : disabled ? colors.gray400 : colors.textSecondary}
+                weight={attachMenuOpen ? 'fill' : 'regular'}
+              />
+            </Animated.View>
+          </Pressable>
+        )}
 
         <TextInput
           ref={inputRef}

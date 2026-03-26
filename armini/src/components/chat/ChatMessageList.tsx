@@ -4,8 +4,8 @@ import { GreetingHeader } from './GreetingHeader';
 import { SuggestionChips } from './SuggestionChips';
 import { ChatMessage } from './ChatMessage';
 import { LoadingDots } from './LoadingDots';
-import { useTheme } from '@/src/theme';
-import type { Message, SuggestionChip } from '@/src/types/chat.types';
+import { Spacing, useTheme } from '@/src/theme';
+import type { Message, SuggestionChip, ExpenseActionType } from '@/src/types/chat.types';
 
 interface ChatMessageListProps {
   messages: Message[];
@@ -14,6 +14,7 @@ interface ChatMessageListProps {
   messageOfDay: string;
   suggestions: SuggestionChip[];
   onSuggestionSelect: (prompt: string) => void;
+  onExpenseAction?: (actionType: ExpenseActionType) => void;
 }
 
 export function ChatMessageList({
@@ -23,13 +24,13 @@ export function ChatMessageList({
   messageOfDay,
   suggestions,
   onSuggestionSelect,
+  onExpenseAction,
 }: ChatMessageListProps) {
   const colors = useTheme();
   const listRef = useRef<FlatList>(null);
 
-  const hasUserMessage = messages.some((message) => message.sender === 'user');
-  const hasSingleAiBootstrapMessage =
-    messages.length === 1 && messages[0]?.sender === 'ai' && !hasUserMessage;
+  const lastMessage = messages[messages.length - 1];
+  const showSuggestions = !isLoading && lastMessage?.sender === 'ai';
 
   if (messages.length === 0) {
     return (
@@ -45,11 +46,11 @@ export function ChatMessageList({
       ref={listRef}
       data={messages}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <ChatMessage message={item} />}
+      renderItem={({ item }) => <ChatMessage message={item} onExpenseAction={onExpenseAction} />}
       ListFooterComponent={
         <>
           {isLoading ? <LoadingDots /> : null}
-          {hasSingleAiBootstrapMessage ? (
+          {showSuggestions ? (
             <SuggestionChips chips={suggestions} onSelect={onSuggestionSelect} />
           ) : null}
         </>
@@ -67,11 +68,14 @@ export function ChatMessageList({
 const styles = StyleSheet.create({
   emptyContainer: {
     flex: 1,
+    paddingHorizontal: Spacing[1],
   },
   list: {
     flex: 1,
   },
   content: {
+    paddingTop: Spacing[5],
+    paddingHorizontal: Spacing[1],
     paddingBottom: 16,
     flexGrow: 1,
   },

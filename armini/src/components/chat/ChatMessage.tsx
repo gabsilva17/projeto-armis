@@ -5,13 +5,15 @@ import React, { useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Markdown from 'react-native-markdown-display';
-import type { Message } from '@/src/types/chat.types';
+import { ExpenseActionButtons } from './ExpenseActionButtons';
+import type { Message, ExpenseActionType } from '@/src/types/chat.types';
 
 interface ChatMessageProps {
   message: Message;
+  onExpenseAction?: (actionType: ExpenseActionType) => void;
 }
 
-export const ChatMessage = React.memo(function ChatMessage({ message }: ChatMessageProps) {
+export const ChatMessage = React.memo(function ChatMessage({ message, onExpenseAction }: ChatMessageProps) {
   const colors = useTheme();
   const isUser = message.sender === 'user';
   const [isSelectionModalVisible, setIsSelectionModalVisible] = useState(false);
@@ -193,6 +195,10 @@ export const ChatMessage = React.memo(function ChatMessage({ message }: ChatMess
           {message.content}
         </Markdown>
       </View>
+
+      {message.actions && message.actions.length > 0 && onExpenseAction ? (
+        <ExpenseActionButtons actions={message.actions} onAction={onExpenseAction} />
+      ) : null}
 
       <View style={styles.aiActionsRow}>
         <Pressable onPress={() => void handleCopyMessage()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Copy assistant message">
