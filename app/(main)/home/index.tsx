@@ -1,28 +1,37 @@
-import { ROUTES } from '@/src/constants/app.constants';
+import { QuickActionsSection } from '@/src/components/home/QuickActionsSection';
 import { useChatLauncherStore } from '@/src/stores/useChatLauncherStore';
+import { useChatStore } from '@/src/stores/useChatStore';
 import { Spacing, Typography, useTheme } from '@/src/theme';
 import { useGreeting } from '@/src/hooks/useGreeting';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, type GestureResponderEvent } from 'react-native';
+import { useCallback } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function HomeScreen() {
   const colors = useTheme();
   const { greeting, messageOfDay } = useGreeting();
   const router = useRouter();
   const requestOpenChat = useChatLauncherStore((state) => state.requestOpenChat);
+  const sendMessage = useChatStore((s) => s.sendMessage);
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  const handleArminiPress = (event: GestureResponderEvent) => {
-    const { pageX, pageY } = event.nativeEvent;
+  const handleNavigate = useCallback(
+    (route: string) => router.push(route as Href),
+    [router],
+  );
 
-    if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
-      requestOpenChat(pageX, pageY);
-      return;
-    }
-
+  const handleOpenChat = useCallback(() => {
     requestOpenChat();
-  };
+  }, [requestOpenChat]);
+
+  const handleChatPrompt = useCallback(
+    (prompt: string) => {
+      requestOpenChat();
+      // Pequeno delay para garantir que o chat abre antes de enviar
+      setTimeout(() => void sendMessage(prompt), 300);
+    },
+    [requestOpenChat, sendMessage],
+  );
 
   return (
     <ScrollView
@@ -38,51 +47,11 @@ export default function HomeScreen() {
 
       <Text style={[styles.todayLabel, { color: colors.textMuted }]}>{today}</Text>
 
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Start</Text>
-        <Text style={[styles.sectionMeta, { color: colors.textMuted }]}>3 workflows available</Text>
-      </View>
-
-      <View style={[styles.actionsRail, { borderTopColor: colors.border }]}> 
-        <TouchableOpacity
-          style={[styles.actionRow, { borderBottomColor: colors.border }]}
-          onPress={() => router.push(ROUTES.FINANCES)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.actionIndex, { color: colors.textMuted }]}>01</Text>
-          <View style={styles.actionBody}>
-            <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>Finances</Text>
-            <Text style={[styles.actionDescription, { color: colors.textSecondary }]}>Submit and manage your invoices</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={18} color={colors.textPrimary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionRow, { borderBottomColor: colors.border }]}
-          onPress={() => router.push(ROUTES.TIMESHEETS as Href)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.actionIndex, { color: colors.textMuted }]}>02</Text>
-          <View style={styles.actionBody}>
-            <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>Timesheets</Text>
-            <Text style={[styles.actionDescription, { color: colors.textSecondary }]}>Track your hours and projects</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={18} color={colors.textPrimary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionRow, { borderBottomColor: colors.border }]}
-          onPress={handleArminiPress}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.actionIndex, { color: colors.textMuted }]}>03</Text>
-          <View style={styles.actionBody}>
-            <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>Armini</Text>
-            <Text style={[styles.actionDescription, { color: colors.textSecondary }]}>Open the assistant chat</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={18} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <QuickActionsSection
+        onNavigate={handleNavigate}
+        onOpenChat={handleOpenChat}
+        onChatPrompt={handleChatPrompt}
+      />
 
       <Text style={[styles.footnote, { color: colors.textMuted }]}>Tap a workflow to continue.</Text>
     </ScrollView>
@@ -122,49 +91,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing[4],
     fontSize: Typography.size.sm,
     fontFamily: Typography.fontFamily.medium,
-  },
-  sectionHeader: {
-    marginTop: Spacing[6],
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: Typography.size.xl,
-    fontFamily: Typography.fontFamily.bold,
-  },
-  sectionMeta: {
-    fontSize: Typography.size.xs,
-    fontFamily: Typography.fontFamily.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  actionsRail: {
-    marginTop: Spacing[3],
-    borderTopWidth: 1,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[3],
-    paddingVertical: Spacing[4],
-    borderBottomWidth: 1,
-  },
-  actionIndex: {
-    width: 28,
-    fontSize: Typography.size.sm,
-    fontFamily: Typography.fontFamily.semibold,
-  },
-  actionBody: {
-    flex: 1,
-    gap: 2,
-  },
-  actionTitle: {
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.semibold,
-  },
-  actionDescription: {
-    fontSize: Typography.size.sm,
   },
   footnote: {
     marginTop: Spacing[4],

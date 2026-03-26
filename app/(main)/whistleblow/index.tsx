@@ -17,7 +17,7 @@ export default function ArminiChatScreen() {
   const insets = useSafeAreaInsets();
   const {
     messages,
-    startupSuggestions,
+    suggestions,
     isLoading,
     error,
     ensureSessionBootstrap,
@@ -79,7 +79,7 @@ export default function ArminiChatScreen() {
           isLoading={isLoading}
           greeting={chatGreeting}
           messageOfDay=""
-          suggestions={startupSuggestions}
+          suggestions={suggestions}
           onSuggestionSelect={handleSuggestionSelect}
         />
 

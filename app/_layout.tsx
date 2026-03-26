@@ -1,3 +1,4 @@
+import { AlertProvider } from '@/src/contexts/AlertContext';
 import { useSidebarStore } from '@/src/stores/useSidebarStore';
 import { Spacing, Typography } from '@/src/theme';
 import { themes } from '@/src/theme/colors';
@@ -114,8 +115,10 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ErrorBoundary>
-          <AppStatusBar />
-          <Stack screenOptions={{ headerShown: false }} />
+          <AlertProvider>
+            <AppStatusBar />
+            <Stack screenOptions={{ headerShown: false }} />
+          </AlertProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>

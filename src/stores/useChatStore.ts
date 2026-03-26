@@ -16,7 +16,7 @@ import type { Message, SuggestionChip } from '../types/chat.types';
 
 interface ChatStore {
   messages: Message[];
-  startupSuggestions: SuggestionChip[];
+  suggestions: SuggestionChip[];
   isLoading: boolean;
   isBootstrapping: boolean;
   hasBootstrappedSession: boolean;
@@ -32,7 +32,7 @@ export const useChatStore = create<ChatStore>()(
   persist(
     (set, get) => ({
       messages: [],
-      startupSuggestions: getStartupFallbackSuggestions(),
+      suggestions: getStartupFallbackSuggestions(),
       isLoading: false,
       isBootstrapping: false,
       hasBootstrappedSession: false,
@@ -58,7 +58,7 @@ export const useChatStore = create<ChatStore>()(
 
           set((s) => ({
             messages: s.messages.length === 0 ? [startupMessage] : s.messages,
-            startupSuggestions,
+            suggestions: startupSuggestions,
             isBootstrapping: false,
             hasBootstrappedSession: true,
             isLoading: false,
@@ -67,7 +67,7 @@ export const useChatStore = create<ChatStore>()(
           const fallback = getStartupFallbackMessage();
           set((s) => ({
             messages: s.messages.length === 0 ? [fallback] : s.messages,
-            startupSuggestions: getStartupFallbackSuggestions(),
+            suggestions: getStartupFallbackSuggestions(),
             isBootstrapping: false,
             hasBootstrappedSession: true,
             isLoading: false,
@@ -96,9 +96,10 @@ export const useChatStore = create<ChatStore>()(
           const context = buildRecentTimesheetContext(entries, 15);
           const runtimeSystemContext = buildStartupTimesheetContextInjection(context);
 
-          const aiMessage = await sendMessageService(content, get().messages, runtimeSystemContext);
+          const { message: aiMessage, suggestions } = await sendMessageService(content, get().messages, runtimeSystemContext);
           set((s) => ({
             messages: [...s.messages, aiMessage],
+            suggestions,
             isLoading: false,
           }));
           return true;
@@ -132,9 +133,10 @@ export const useChatStore = create<ChatStore>()(
           const context = buildRecentTimesheetContext(entries, 15);
           const runtimeSystemContext = buildStartupTimesheetContextInjection(context);
 
-          const aiMessage = await sendMessageWithImageService(base64, text, history, runtimeSystemContext);
+          const { message: aiMessage, suggestions } = await sendMessageWithImageService(base64, text, history, runtimeSystemContext);
           set((s) => ({
             messages: [...s.messages, aiMessage],
+            suggestions,
             isLoading: false,
           }));
           return true;
@@ -150,7 +152,7 @@ export const useChatStore = create<ChatStore>()(
       clearMessages: () => {
         set({
           messages: [],
-          startupSuggestions: getStartupFallbackSuggestions(),
+          suggestions: getStartupFallbackSuggestions(),
           isLoading: false,
           isBootstrapping: false,
           hasBootstrappedSession: false,

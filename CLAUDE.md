@@ -116,6 +116,7 @@ src/
   components/
     chat/                     ← ChatBubbleContainer, ChatInput, ChatMessage, etc.
     finances/                 ← ManualInvoiceEntry (modal) para submissão manual
+    home/                     ← QuickActionsSection, QuickActionFormModal
     navigation/               ← TopBar, BottomNavBar, ProfileSidebar
     timesheets/               ← CalendarGrid, DayCell, EntryFormModal, WeekStrip, etc.
     ui/                       ← ActionListRow, Button, Card, DateField, Divider, EmptyState, SelectField, TextField, etc.
@@ -159,6 +160,7 @@ src/
     image.constants.ts        ← Config partilhada de image picker/upload
     llm.constants.ts          ← Endpoint/model/version/token limits do cliente LLM
     chat.constants.ts         ← Textos/strings reutilizáveis do domínio de chat
+    quickActions.constants.ts ← Opções e limites de quick actions
     suggestions.ts            ← Chat suggestions por defeito
 ```
 
@@ -171,6 +173,7 @@ Cada store é um ficheiro em `src/stores/`, hook-based, sem Redux/Context pesado
 | `useFinancesStore` | `photoUri`, `photoBase64`, `status`, `invoiceData` | Não |
 | `useTimesheetsStore` | `allEntries[]`, `isLoading`, `hasLoaded` | Não |
 | `useSidebarStore` | `isOpen` | Não |
+| `useQuickActionsStore` | `actions[]` (QuickAction) | AsyncStorage |
 
 `useTimesheetsStore` expõe `getMonthData(year, month)` que deriva `MonthSummary` do estado.
 
@@ -243,6 +246,7 @@ export const FEATURES = { BACKEND_CONNECTED: false };
 Quando `false`, `timesheetsService` devolve dados mock. Ligar quando o backend estiver pronto.
 
 ## Regras de código
+- **Nunca fazer assumptions.** Se houver qualquer dúvida sobre requisitos, design, comportamento esperado ou abordagem, perguntar ao utilizador antes de avançar. Preferir clarificar do que assumir.
 - Componentes funcionais com hooks, sem classes
 - ES modules (import/export), sem CommonJS
 - Nomes de ficheiros e variáveis em inglês, comentários em português
@@ -265,6 +269,17 @@ Quando `false`, `timesheetsService` devolve dados mock. Ligar quando o backend e
 - Fluxos de envio no chat devem devolver sucesso/falha (`Promise<boolean>`) para a UI decidir quando limpar draft/input.
 - O input de chat só deve limpar texto/imagem após sucesso da chamada; em erro deve preservar draft para retry manual.
 - Erros de chat devem ser visíveis no container com ação explícita de dismiss (evitar falhas silenciosas).
+
+## Código intencionalmente inativo
+
+O projeto contém código preservado a pedido explícito que não está a ser usado na UI atual. **Não remover** sem confirmar com o utilizador.
+
+| Ficheiro | O que está inativo | Motivo |
+|----------|--------------------|--------|
+| `src/components/chat/ChatInput.tsx` | Botão de attach de foto (PaperclipIcon + menu Camera/Gallery), lógica de `pendingImage`, `takePhoto`, `pickFromLibrary`, `handleClipPress`, `clipScale` | Feature ocultada temporariamente via `{false && (...)}` — a lógica pode ser reativada quando necessário |
+| `ChatBubbleContainer.tsx` | Prop `onSendImage` passada ao `ChatInput` | Dependente da feature acima |
+
+---
 
 ## ⚠️ Restrições importantes
 - A API key do LLM está no bundle por ser POC — NUNCA para produção

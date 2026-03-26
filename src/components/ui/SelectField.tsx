@@ -1,8 +1,8 @@
 import { useTheme } from '@/src/theme';
 import { Spacing, Typography } from '@/src/theme';
-import { CaretDownIcon, CheckIcon } from 'phosphor-react-native';
-import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { CaretDownIcon, CheckIcon, MagnifyingGlassIcon } from 'phosphor-react-native';
+import { useMemo, useRef, useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface SelectFieldProps {
   label?: string;
@@ -12,6 +12,8 @@ interface SelectFieldProps {
   options: readonly string[];
   helperText?: string;
   errorText?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
   accessibilityLabel?: string;
   getOptionLabel?: (option: string) => string;
   optionToValue?: (option: string) => string;
@@ -26,6 +28,8 @@ export function SelectField({
   options,
   helperText,
   errorText,
+  searchable = true,
+  searchPlaceholder = 'Search...',
   accessibilityLabel,
   getOptionLabel,
   optionToValue,
@@ -33,8 +37,26 @@ export function SelectField({
 }: SelectFieldProps) {
   const colors = useTheme();
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const searchRef = useRef<TextInput>(null);
   const hasLabel = !!label && label.trim().length > 0;
   const hasError = !!errorText && errorText.trim().length > 0;
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options;
+    const query = search.toLowerCase().trim();
+    return options.filter((option) => {
+      const optionLabel = getOptionLabel ? getOptionLabel(option) : option;
+      return optionLabel.toLowerCase().includes(query);
+    });
+  }, [options, search, searchable, getOptionLabel]);
+
+  const handleToggle = () => {
+    setOpen((current) => {
+      if (current) setSearch('');
+      return !current;
+    });
+  };
 
   return (
     <View style={styles.fieldBlock}>
@@ -48,7 +70,7 @@ export function SelectField({
       <TouchableOpacity
         style={[styles.selectTrigger, { borderBottomColor: hasError ? colors.error : colors.border }]}
         activeOpacity={0.75}
-        onPress={() => setOpen((current) => !current)}
+        onPress={handleToggle}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
       >
@@ -60,7 +82,23 @@ export function SelectField({
 
       {open && (
         <View style={[styles.selectMenu, { borderColor: colors.border, backgroundColor: colors.background }]}>
-          {options.map((option, index) => {
+          {searchable && (
+            <View style={[styles.searchContainer, { borderBottomColor: colors.border }]}>
+              <MagnifyingGlassIcon size={14} color={colors.textMuted} />
+              <TextInput
+                ref={searchRef}
+                style={[styles.searchInput, { color: colors.textPrimary }]}
+                placeholder={searchPlaceholder}
+                placeholderTextColor={colors.textMuted}
+                value={search}
+                onChangeText={setSearch}
+                autoFocus
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+            </View>
+          )}
+          {filteredOptions.map((option, index) => {
             const nextValue = optionToValue ? optionToValue(option) : option;
             const isSelected = nextValue === value;
             const optionLabel = getOptionLabel ? getOptionLabel(option) : option;
@@ -70,10 +108,11 @@ export function SelectField({
                 key={option}
                 style={[
                   styles.selectItem,
-                  index < options.length - 1 && [styles.selectItemBorder, { borderBottomColor: colors.border }],
+                  index < filteredOptions.length - 1 && [styles.selectItemBorder, { borderBottomColor: colors.border }],
                 ]}
                 onPress={() => {
                   onChange(nextValue);
+                  setSearch('');
                   setOpen(false);
                 }}
                 activeOpacity={0.75}
@@ -85,6 +124,11 @@ export function SelectField({
               </TouchableOpacity>
             );
           })}
+          {searchable && filteredOptions.length === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>No results</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -147,6 +191,28 @@ const styles = StyleSheet.create({
   },
   selectItemTextActive: {
     fontFamily: Typography.fontFamily.medium,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+    paddingHorizontal: Spacing[3],
+    paddingVertical: Spacing[2],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: Typography.size.sm,
+    fontFamily: Typography.fontFamily.regular,
+    paddingVertical: Spacing[1],
+  },
+  emptyState: {
+    paddingVertical: Spacing[4],
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: Typography.size.sm,
+    fontFamily: Typography.fontFamily.regular,
   },
   helperText: {
     fontSize: Typography.size.xs,

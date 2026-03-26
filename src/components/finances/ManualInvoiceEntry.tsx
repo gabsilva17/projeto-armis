@@ -8,15 +8,20 @@ import {
   PARTNER_PROJECT_OPTIONS,
   PRODUCTIVE_PROJECT_OPTIONS,
 } from '@/src/constants/formOptions.constants';
+import { IMAGE_UPLOAD_CONFIG, DOCUMENT_PICKER_CONFIG } from '@/src/constants/image.constants';
 import { HIT_SLOP } from '@/src/constants/ui.constants';
 import { Colors, Spacing, Typography, useTheme } from '@/src/theme';
+import { useAlert } from '@/src/contexts/AlertContext';
 import { useFinancesStore } from '@/src/stores/useFinancesStore';
+import { scanReceiptImage, scanReceiptDocument } from '@/src/services/finances/expenseScanService';
 import type { ManualExpenseEntry, ManualExpenseForm } from '@/src/types/finances.types';
-import { CheckIcon, PlusIcon, XIcon, TrashIcon } from 'phosphor-react-native';
+import { CheckIcon, PlusIcon, XIcon, TrashIcon, CameraIcon } from 'phosphor-react-native';
 import { EmptyState } from '@/src/components/ui/EmptyState';
 import { useSlideUpModalAnimation } from '@/src/hooks/useSlideUpModalAnimation';
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
@@ -29,6 +34,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { File as ExpoFile } from 'expo-file-system';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EMPTY_FORM: ManualExpenseForm = {
@@ -465,16 +473,139 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
 
 export function ManualInvoiceEntry() {
   const colors = useTheme();
+  const alert = useAlert();
   const [newModalVisible, setNewModalVisible] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ManualExpenseEntry | null>(null);
+  const [scanModalVisible, setScanModalVisible] = useState(false);
+  const [scanInitialData, setScanInitialData] = useState<ManualExpenseForm | undefined>(undefined);
+  const [isScanning, setIsScanning] = useState(false);
   const { entries, addEntry, updateEntry, deleteEntry } = useFinancesStore();
 
   const totalValue = useMemo(() => {
     return entries.reduce((acc, entry) => acc + (parseFloat(entry.unitValue) || 0), 0).toFixed(2);
   }, [entries]);
 
+  const handleScanReceipt = useCallback(async (mode: 'camera' | 'gallery') => {
+    if (mode === 'camera') {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permission needed', 'Camera access is required to scan receipts.');
+        return;
+      }
+    }
+
+    const pickerFn = mode === 'camera'
+      ? ImagePicker.launchCameraAsync
+      : ImagePicker.launchImageLibraryAsync;
+
+    const result = await pickerFn({
+      quality: IMAGE_UPLOAD_CONFIG.quality,
+      base64: IMAGE_UPLOAD_CONFIG.base64,
+      mediaTypes: ['images'],
+      allowsEditing: false,
+    });
+
+    if (result.canceled || !result.assets[0]?.base64) return;
+
+    setIsScanning(true);
+    try {
+      const scanResult = await scanReceiptImage(result.assets[0].base64);
+
+      const preFilled: ManualExpenseForm = {
+        date: scanResult.date ?? '',
+        productiveProject: '',
+        partnerProject: '',
+        expenseType: scanResult.expenseType ?? '',
+        quantity: scanResult.quantity ?? '1',
+        unitValue: scanResult.unitValue ?? '',
+        currency: scanResult.currency ?? 'EUR',
+        observations: scanResult.observations ?? '',
+        expenseRepresentation: false,
+      };
+
+      setScanInitialData(preFilled);
+      setScanModalVisible(true);
+    } catch {
+      alert('Scan failed', 'Could not extract data from the image. Please try again or enter manually.');
+    } finally {
+      setIsScanning(false);
+    }
+  }, [alert]);
+
+  const handleScanDocument = useCallback(async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: [...DOCUMENT_PICKER_CONFIG.type],
+      copyToCacheDirectory: DOCUMENT_PICKER_CONFIG.copyToCacheDirectory,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const file = new ExpoFile(asset.uri);
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+
+    if (!base64) return;
+
+    setIsScanning(true);
+    try {
+      const scanResult = await scanReceiptDocument(base64);
+
+      const preFilled: ManualExpenseForm = {
+        date: scanResult.date ?? '',
+        productiveProject: '',
+        partnerProject: '',
+        expenseType: scanResult.expenseType ?? '',
+        quantity: scanResult.quantity ?? '1',
+        unitValue: scanResult.unitValue ?? '',
+        currency: scanResult.currency ?? 'EUR',
+        observations: scanResult.observations ?? '',
+        expenseRepresentation: false,
+      };
+
+      setScanInitialData(preFilled);
+      setScanModalVisible(true);
+    } catch {
+      alert('Scan failed', 'Could not extract data from the document. Please try again or enter manually.');
+    } finally {
+      setIsScanning(false);
+    }
+  }, [alert]);
+
+  const showImageSourceOptions = useCallback(() => {
+    alert('Scan Receipt', 'Choose image source', [
+      { text: 'Take Photo', onPress: () => handleScanReceipt('camera') },
+      { text: 'Choose from Library', onPress: () => handleScanReceipt('gallery') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [alert, handleScanReceipt]);
+
+  const showScanOptions = useCallback(() => {
+    alert('Scan Receipt', 'Choose document type', [
+      { text: 'Photo', onPress: showImageSourceOptions },
+      { text: 'PDF Document', onPress: handleScanDocument },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [alert, showImageSourceOptions, handleScanDocument]);
+
+  // Auto-abrir scan receipt quando redirecionado do chat AI
+  useFocusEffect(
+    useCallback(() => {
+      const pending = useFinancesStore.getState().consumeScanReceipt();
+      if (pending) {
+        const timer = setTimeout(() => showScanOptions(), 400);
+        return () => clearTimeout(timer);
+      }
+    }, [showScanOptions]),
+  );
+
   return (
-    <View style={[styles.pageContainer, { backgroundColor: colors.background }]}> 
+    <View style={[styles.pageContainer, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.pageContent}
         showsVerticalScrollIndicator={false}
@@ -495,12 +626,28 @@ export function ManualInvoiceEntry() {
           </View>
         </View>
 
-        <Button
-          label="New expense"
-          onPress={() => setNewModalVisible(true)}
-          icon={<PlusIcon size={16} color={colors.white} weight="bold" />}
-          accessibilityLabel="Open form to add a new expense"
-        />
+        <View style={styles.buttonRow}>
+          <Button
+            label="New expense"
+            onPress={() => setNewModalVisible(true)}
+            icon={<PlusIcon size={16} color={colors.white} weight="bold" />}
+            accessibilityLabel="Open form to add a new expense"
+            style={styles.flexOne}
+          />
+
+          <Button
+            label={isScanning ? 'Scanning...' : 'Scan receipt'}
+            onPress={showScanOptions}
+            variant="secondary"
+            icon={isScanning
+              ? <ActivityIndicator size="small" color={colors.textPrimary} />
+              : <CameraIcon size={16} color={colors.textPrimary} weight="bold" />
+            }
+            disabled={isScanning}
+            accessibilityLabel="Scan a receipt photo to auto-fill expense"
+            style={styles.flexOne}
+          />
+        </View>
 
         <View style={styles.entriesSection}>
           <View style={styles.entriesHeader}>
@@ -572,6 +719,17 @@ export function ManualInvoiceEntry() {
           if (editingEntry) deleteEntry(editingEntry.id);
         }}
       />
+
+      <ManualInvoiceModal
+        visible={scanModalVisible}
+        onClose={() => {
+          setScanModalVisible(false);
+          setScanInitialData(undefined);
+        }}
+        initialEntry={scanInitialData}
+        onSave={addEntry}
+      />
+
     </View>
   );
 }
@@ -634,6 +792,10 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.base,
     fontFamily: Typography.fontFamily.semibold,
     marginBottom: 4,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: Spacing[3],
   },
   entriesSection: {
     gap: Spacing[4],
@@ -842,4 +1004,5 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.semibold,
     color: Colors.error,
   },
+
 });

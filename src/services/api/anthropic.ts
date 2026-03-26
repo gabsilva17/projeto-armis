@@ -17,6 +17,13 @@ When helping a user plan or prioritize their day:
 - Never output a list of questions upfront.
 - Once you have enough context, present a clear, structured plan.
 
+When the user wants to register, submit, or add an expense or invoice:
+- Acknowledge the request briefly (1-2 sentences max).
+- End your response with the exact marker [EXPENSE_OPTIONS] on its own line.
+- Do NOT describe the input options yourself — the app will render interactive buttons automatically.
+- Do NOT include [EXPENSE_OPTIONS] if the user is just asking questions about expenses, only when they clearly want to register/submit a new one.
+- If the user has already chosen an input method (e.g., they said they want to type it in chat), skip the marker and proceed with the flow directly.
+
 General behavior:
 - Be concise and direct. Avoid unnecessary preamble.
 - Use the user's name when it feels natural, not on every message.
@@ -36,7 +43,20 @@ When the user sends an image:
 - If it is an invoice or receipt and text is visible, extract key fields when possible (for example: vendor, date, amount, currency, invoice/reference number).
 - If it is not an invoice, answer normally for the user's intent and keep the same assistant tone.
 - If a detail is uncertain or unreadable, say it explicitly instead of guessing.
-- End with a short, actionable next step the user can take.`;
+- End with a short, actionable next step the user can take.
+
+At the end of EVERY response, append a suggestions block that gives the user natural next steps based on the conversation. Format:
+
+[SUGGESTIONS]
+[{"label":"Short Label","prompt":"Full prompt text"},{"label":"Short Label","prompt":"Full prompt text"},{"label":"Short Label","prompt":"Full prompt text"}]
+
+Rules for suggestions:
+- Always include exactly 3 suggestions.
+- Labels: 2-5 words, concise and action-oriented.
+- Prompts: specific, actionable, directly related to what was just discussed.
+- The [SUGGESTIONS] block must always be the very last thing in your response.
+- Do NOT include [SUGGESTIONS] when your response contains [EXPENSE_OPTIONS] — the action buttons are sufficient.
+- Do not wrap the JSON in markdown code fences.`;
 
 function buildSystemPrompt(runtimeSystemContext?: string): string {
   if (!runtimeSystemContext?.trim()) {
@@ -60,7 +80,16 @@ export interface ImageBlock {
   };
 }
 
-export type ContentBlock = TextBlock | ImageBlock;
+export interface DocumentBlock {
+  type: 'document';
+  source: {
+    type: 'base64';
+    media_type: 'application/pdf';
+    data: string;
+  };
+}
+
+export type ContentBlock = TextBlock | ImageBlock | DocumentBlock;
 
 export interface AnthropicMessage {
   role: 'user' | 'assistant';

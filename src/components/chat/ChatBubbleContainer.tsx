@@ -6,7 +6,10 @@ import { useChatStore } from '@/src/stores/useChatStore';
 import { useChatAnimation } from '@/src/hooks/useChatAnimation';
 import { getChatGreeting } from '@/src/services/chat/chatService';
 import { DotsThreeVerticalIcon, XIcon } from 'phosphor-react-native';
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { ROUTES } from '@/src/constants/app.constants';
+import { useFinancesStore } from '@/src/stores/useFinancesStore';
+import { useRouter } from 'expo-router';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import {
   Animated,
   Modal,
@@ -18,6 +21,7 @@ import {
 import ReAnimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboard } from '@/src/hooks/useKeyboard';
+import type { ExpenseActionType } from '@/src/types/chat.types';
 
 export interface ChatHandle {
   open: (originX: number, originY: number) => void;
@@ -31,7 +35,7 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
   const colors = useTheme();
   const {
     messages,
-    startupSuggestions,
+    suggestions,
     isLoading,
     error,
     ensureSessionBootstrap,
@@ -85,9 +89,24 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
     open: handleOpen,
   }));
 
+  const router = useRouter();
+
   const handleSuggestionSelect = (prompt: string) => {
     void sendMessage(prompt);
   };
+
+  const handleExpenseAction = useCallback((actionType: ExpenseActionType) => {
+    if (actionType === 'photo-expense') {
+      handleClose();
+      useFinancesStore.getState().requestScanReceipt();
+      // Aguarda a animação de fecho do chat antes de navegar
+      setTimeout(() => {
+        router.push(ROUTES.FINANCES);
+      }, 350);
+    } else if (actionType === 'chat-expense') {
+      void sendMessage('Quero registar a despesa por chat, pede-me os dados um a um.');
+    }
+  }, [handleClose, router, sendMessage]);
 
   return (
     <Modal
@@ -160,8 +179,9 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
               isLoading={isLoading}
               greeting={chatGreeting}
               messageOfDay=""
-              suggestions={startupSuggestions}
+              suggestions={suggestions}
               onSuggestionSelect={handleSuggestionSelect}
+              onExpenseAction={handleExpenseAction}
             />
             <ChatInput
               value={composerText}

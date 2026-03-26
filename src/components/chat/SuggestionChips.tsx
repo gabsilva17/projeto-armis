@@ -9,6 +9,8 @@ interface SuggestionChipsProps {
 }
 
 export function SuggestionChips({ chips, onSelect }: SuggestionChipsProps) {
+  if (chips.length === 0) return null;
+
   return (
     <View style={styles.container}>
       {chips.map((chip) => (

@@ -2,12 +2,13 @@ import { DEFAULT_SUGGESTIONS } from '../../constants/suggestions';
 import { DEFAULT_IMAGE_ANALYSIS_PROMPT, MESSAGES_OF_DAY } from '../../constants/chat.constants';
 import { callClaude, type AnthropicMessage } from '../api/anthropic';
 import {
+  adaptAnthropicResponse,
   adaptAnthropicTextToAiMessage,
   adaptHistoryToAnthropicMessages,
   buildStartupTimesheetContextInjection,
   createImagePromptContent,
 } from '../adapters/chatAdapter';
-import type { Message, SuggestionChip } from '../../types/chat.types';
+import type { AiResponsePayload, Message, SuggestionChip } from '../../types/chat.types';
 import type { RecentTimesheetContext } from '../timesheets/timesheetsService';
 
 export function getDailyGreeting(userName: string): string {
@@ -95,7 +96,7 @@ export async function generateStartupMessage(
   const runtimeContext = buildStartupTimesheetContextInjection(context);
   const messages: AnthropicMessage[] = [{ role: 'user', content: STARTUP_MESSAGE_PROMPT }];
   const responseText = await callClaude(messages, runtimeContext);
-  return adaptAnthropicTextToAiMessage(responseText);
+  return adaptAnthropicResponse(responseText).message;
 }
 
 export function getStartupFallbackMessage(now = new Date()): Message {
@@ -117,7 +118,7 @@ export async function sendMessageWithImage(
   text: string,
   history: Message[],
   runtimeSystemContext?: string,
-): Promise<Message> {
+): Promise<AiResponsePayload> {
   const imageContent = createImagePromptContent(base64, text, DEFAULT_IMAGE_ANALYSIS_PROMPT);
 
   const anthropicMessages: AnthropicMessage[] = [
@@ -127,14 +128,14 @@ export async function sendMessageWithImage(
 
   const responseText = await callClaude(anthropicMessages, runtimeSystemContext);
 
-  return adaptAnthropicTextToAiMessage(responseText);
+  return adaptAnthropicResponse(responseText);
 }
 
 export async function sendMessage(
   content: string,
   history: Message[],
   runtimeSystemContext?: string,
-): Promise<Message> {
+): Promise<AiResponsePayload> {
   const anthropicMessages: AnthropicMessage[] = [
     ...adaptHistoryToAnthropicMessages(history),
     { role: 'user', content },
@@ -142,5 +143,5 @@ export async function sendMessage(
 
   const responseText = await callClaude(anthropicMessages, runtimeSystemContext);
 
-  return adaptAnthropicTextToAiMessage(responseText);
+  return adaptAnthropicResponse(responseText);
 }
