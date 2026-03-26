@@ -1,0 +1,73 @@
+{
+  "pageTitle": "Despesas Manuais",
+  "pageSubtitle": "Registe manualmente as suas despesas utilizando o formulário abaixo.",
+  "totalExpenses": "Total de Despesas",
+  "newExpense": "Nova despesa",
+  "scanReceipt": "Digitalizar recibo",
+  "scanning": "A digitalizar...",
+  "recentEntries": "Entradas recentes",
+  "noExpensesTitle": "Sem despesas",
+  "noExpensesSubtitle": "As suas despesas adicionadas manualmente aparecerão aqui.",
+  "expense": "Despesa",
+  "editExpense": "Editar Despesa",
+  "newExpenseTitle": "Nova Despesa",
+  "deleteExpense": "Eliminar despesa",
+  "fillRandom": "⚡ Preencher com dados aleatórios",
+  "scanReceiptTitle": "Digitalizar Recibo",
+  "chooseImageSource": "Escolher origem da imagem",
+  "chooseDocumentType": "Escolher tipo de documento",
+  "takePhoto": "Tirar Foto",
+  "chooseFromLibrary": "Escolher da Galeria",
+  "photo": "Foto",
+  "pdfDocument": "Documento PDF",
+  "scanFailed": "Digitalização falhou",
+  "scanFailedImage": "Não foi possível extrair dados da imagem. Tente novamente ou insira manualmente.",
+  "scanFailedDocument": "Não foi possível extrair dados do documento. Tente novamente ou insira manualmente.",
+  "form": {
+    "date": "Data",
+    "datePlaceholder": "dd/mm/aaaa",
+    "productiveProject": "Projeto Produtivo",
+    "productiveProjectHelper": "Selecione o projeto da empresa à qual pertence.",
+    "partnerProject": "Projeto Parceiro",
+    "partnerProjectHelper": "Preencha apenas se a despesa pertencer a uma empresa parceira.",
+    "expenseType": "Tipo de Despesa",
+    "quantity": "Quantidade",
+    "unitValue": "Valor Unitário",
+    "currency": "Moeda",
+    "observations": "Observações",
+    "expenseRepresentation": "Despesa em Representação de?"
+  },
+  "formOptions": {
+    "productiveProjects": {
+      "digitalHub": "Digital Hub",
+      "internalRD": "I&D Interno",
+      "armisPlatform": "ARMIS Platform"
+    },
+    "partnerProjects": {
+      "none": "Nenhum",
+      "clientProjectA": "Projeto Cliente A",
+      "clientProjectB": "Projeto Cliente B"
+    },
+    "expenseTypes": {
+      "travel": "Viagem",
+      "meal": "Refeição",
+      "accommodation": "Alojamento",
+      "officeSupplies": "Material de Escritório",
+      "others": "Outros"
+    }
+  },
+  "validation": {
+    "dateInvalid": "Selecione uma data válida.",
+    "productiveProjectRequired": "O projeto produtivo é obrigatório.",
+    "productiveProjectInvalid": "Selecione um projeto produtivo válido.",
+    "expenseTypeRequired": "O tipo de despesa é obrigatório.",
+    "expenseTypeInvalid": "Selecione um tipo de despesa válido.",
+    "currencyRequired": "A moeda é obrigatória.",
+    "currencyInvalid": "Selecione uma moeda válida.",
+    "quantityInvalid": "A quantidade deve ser um número inteiro.",
+    "quantityRange": "A quantidade deve estar entre 1 e {{max}}.",
+    "unitValueInvalid": "Use um valor válido com até 2 casas decimais.",
+    "unitValueRange": "O valor unitário deve ser maior que 0 e no máximo {{max}}.",
+    "observationsMaxLength": "As observações devem ter no máximo {{max}} caracteres."
+  }
+}

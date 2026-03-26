@@ -1,7 +1,7 @@
 import { useTheme } from '@/src/theme';
 import { Spacing, Typography } from '@/src/theme';
 import { StyleSheet, Text, View } from 'react-native';
-import { MONTH_NAMES } from './timesheetsConstants';
+import { useTranslation } from 'react-i18next';
 
 interface CalendarHeaderProps {
   year: number;
@@ -12,18 +12,19 @@ interface CalendarHeaderProps {
 
 export function CalendarHeader({ year, month, totalHours, daysLogged }: CalendarHeaderProps) {
   const colors = useTheme();
+  const { t } = useTranslation('timesheets');
   return (
     <View style={styles.calHeader}>
-      <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>{MONTH_NAMES[month]} {year}</Text>
+      <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>{t(`months.${month}`)} {year}</Text>
       <View style={styles.summaryRow}>
         <View style={styles.summaryChip}>
           <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{totalHours}h</Text>
-          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Total</Text>
+          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{t('summary.total')}</Text>
         </View>
         <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
         <View style={styles.summaryChip}>
           <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{daysLogged}</Text>
-          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Days logged</Text>
+          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{t('summary.daysLogged')}</Text>
         </View>
       </View>
     </View>

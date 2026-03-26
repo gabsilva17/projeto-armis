@@ -1,0 +1,48 @@
+{
+  "title": "ARMINI Chat",
+  "chatGreeting": {
+    "morning": "How can I help you this morning?",
+    "afternoon": "How can I help you this afternoon?",
+    "evening": "How can I help you this evening?"
+  },
+  "messagesOfDay": {
+    "0": "How can I help you today?",
+    "1": "What would you like to accomplish?",
+    "2": "Ready when you are.",
+    "3": "Let's get things done.",
+    "4": "What's on your mind?",
+    "5": "Here to help. Just ask.",
+    "6": "Your AI companion is ready."
+  },
+  "fallbackMessage": "I reviewed your last 15 days and noticed a few workdays with no entries. I can help you confirm if those gaps are expected and suggest what to log next. Do you want to review them together?",
+  "deleteChat": "Delete chat",
+  "chatOptions": "Chat options",
+  "inputPlaceholder": "Chat with ARMINI…",
+  "inputPlaceholderWithImage": "Add a caption…",
+  "sendMessage": "Send message",
+  "messageInput": "Message input",
+  "dismissError": "Dismiss chat error",
+  "suggestions": {
+    "reviewLast15Days": {
+      "label": "Review my last 15 days",
+      "prompt": "Can you review my last 15 days and tell me what stands out?"
+    },
+    "checkTodayEntries": {
+      "label": "Check today entries",
+      "prompt": "What do I already have logged for today, and is anything missing?"
+    },
+    "findMissingWorkdays": {
+      "label": "Find missing workdays",
+      "prompt": "Which workdays in the last 15 days have no entries, excluding weekends?"
+    },
+    "suggestNextLogs": {
+      "label": "Suggest next logs",
+      "prompt": "Suggest what I should log next for the missing workdays, without submitting anything."
+    }
+  },
+  "imageAnalysisPrompt": "Please analyze this image and tell me what you see.",
+  "expenseActions": {
+    "chat": "Enter via chat",
+    "photo": "Send photo"
+  }
+}

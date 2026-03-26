@@ -2,9 +2,15 @@
 // NOTE: The API key is exposed in the app bundle — fine for testing,
 // but in production this call should move to your MCP backend so the key stays server-side.
 
+import i18n from '@/src/i18n';
 import { ANTHROPIC_CONFIG } from '@/src/constants/llm.constants';
 
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: 'English',
+  pt: 'Portuguese (pt-PT)',
+};
 
 const SYSTEM_PROMPT = `You are ARMINI, an AI companion for employees. Your role is to help them manage their work day — planning tasks, setting priorities, answering questions, and submitting expenses.
 
@@ -28,7 +34,7 @@ General behavior:
 - Be concise and direct. Avoid unnecessary preamble.
 - Use the user's name when it feels natural, not on every message.
 - When the user's intent is clear, act on it — don't ask for clarification you don't need.
-- Respond in the same language the user writes in.
+- IMPORTANT: Always respond in the user's preferred language. The current language preference will be injected at runtime.
 
 If STARTUP_TIMESHEET_CONTEXT is provided in system context:
 - Start the conversation by referencing what is logged for today (if any).
@@ -59,11 +65,16 @@ Rules for suggestions:
 - Do not wrap the JSON in markdown code fences.`;
 
 function buildSystemPrompt(runtimeSystemContext?: string): string {
+  const langName = LANGUAGE_NAMES[i18n.language] ?? 'English';
+  const langDirective = `\n\nUser language preference: ${langName}. You MUST respond in ${langName}.`;
+
+  const base = SYSTEM_PROMPT + langDirective;
+
   if (!runtimeSystemContext?.trim()) {
-    return SYSTEM_PROMPT;
+    return base;
   }
 
-  return `${SYSTEM_PROMPT}\n\nAdditional runtime context:\n${runtimeSystemContext.trim()}`;
+  return `${base}\n\nAdditional runtime context:\n${runtimeSystemContext.trim()}`;
 }
 
 export interface TextBlock {

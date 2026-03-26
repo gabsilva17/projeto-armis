@@ -6,14 +6,17 @@ import { useGreeting } from '@/src/hooks/useGreeting';
 import { useRouter, type Href } from 'expo-router';
 import { useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/src/i18n';
 
 export default function HomeScreen() {
   const colors = useTheme();
+  const { t } = useTranslation('home');
   const { greeting, messageOfDay } = useGreeting();
   const router = useRouter();
   const requestOpenChat = useChatLauncherStore((state) => state.requestOpenChat);
   const sendMessage = useChatStore((s) => s.sendMessage);
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+  const today = new Date().toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' });
 
   const handleNavigate = useCallback(
     (route: string) => router.push(route as Href),
@@ -40,7 +43,7 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.greetingSection, { borderBottomColor: colors.black }]}>
-        <Text style={[styles.kicker, { color: colors.textMuted }]}>ARMIS DIGITAL HUB</Text>
+        <Text style={[styles.kicker, { color: colors.textMuted }]}>{t('kicker')}</Text>
         <Text style={[styles.greeting, { color: colors.textPrimary }]}>{greeting}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{messageOfDay}</Text>
       </View>
@@ -53,7 +56,7 @@ export default function HomeScreen() {
         onChatPrompt={handleChatPrompt}
       />
 
-      <Text style={[styles.footnote, { color: colors.textMuted }]}>Tap a workflow to continue.</Text>
+      <Text style={[styles.footnote, { color: colors.textMuted }]}>{t('footnote')}</Text>
     </ScrollView>
   );
 }

@@ -1,0 +1,46 @@
+{
+  "kicker": "ARMIS DIGITAL HUB",
+  "footnote": "Toque num fluxo para continuar.",
+  "greeting": {
+    "morning": "Bom dia, {{userName}}",
+    "afternoon": "Boa tarde, {{userName}}",
+    "evening": "Boa noite, {{userName}}"
+  },
+  "quickActions": {
+    "title": "Ações Rápidas",
+    "count_one": "{{count}} ação",
+    "count_other": "{{count}} ações",
+    "addAction": "Adicionar ação rápida",
+    "longPressHint": "Pressão longa para editar ou eliminar",
+    "defaultFinancesTitle": "Finanças",
+    "defaultFinancesDesc": "Submeter e gerir as suas faturas",
+    "defaultTimesheetsTitle": "Horas",
+    "defaultTimesheetsDesc": "Acompanhar horas e projetos",
+    "defaultArminiTitle": "Armini",
+    "defaultArminiDesc": "Abrir o assistente de chat"
+  },
+  "quickActionForm": {
+    "newTitle": "Nova Ação Rápida",
+    "editTitle": "Editar Ação Rápida",
+    "titleLabel": "Título",
+    "titlePlaceholder": "ex. Submeter fatura",
+    "descriptionLabel": "Descrição",
+    "descriptionPlaceholder": "Descrição curta opcional",
+    "actionTypeLabel": "Tipo de ação",
+    "actionTypePlaceholder": "Selecionar tipo de ação",
+    "destinationLabel": "Destino",
+    "destinationPlaceholder": "Selecionar ecrã",
+    "chatPromptLabel": "Prompt de chat",
+    "chatPromptPlaceholder": "ex. Mostra as minhas horas desta semana",
+    "actionTypes": {
+      "navigate": "Navegar para ecrã",
+      "chat-prompt": "Enviar prompt de chat",
+      "open-chat": "Abrir assistente de chat"
+    },
+    "routes": {
+      "finances": "Finanças",
+      "timesheets": "Horas",
+      "settings": "Definições"
+    }
+  }
+}

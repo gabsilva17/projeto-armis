@@ -19,7 +19,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CopySimpleIcon, TrashIcon, XIcon } from 'phosphor-react-native';
-import { ALL_STATUSES, STATUS_LABELS } from './timesheetsConstants';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/src/i18n';
+import { ALL_STATUSES } from './timesheetsConstants';
 
 interface EntryFormModalProps {
   visible: boolean;
@@ -75,27 +77,27 @@ function validateEntryInput(form: EntryInput, hoursInput: string): EntryValidati
   const parsedHours = parseHours(hoursInput);
 
   if (!normalizedProject) {
-    errors.project = 'Project is required.';
+    errors.project = i18n.t('timesheets:validation.projectRequired');
   } else if (normalizedProject.length > MAX_PROJECT_LENGTH) {
-    errors.project = `Project must have at most ${MAX_PROJECT_LENGTH} characters.`;
+    errors.project = i18n.t('timesheets:validation.projectMaxLength', { max: MAX_PROJECT_LENGTH });
   } else if (!/[\p{L}\p{N}]/u.test(normalizedProject)) {
-    errors.project = 'Project must contain letters or numbers.';
+    errors.project = i18n.t('timesheets:validation.projectAlphanumeric');
   }
 
   if (!normalizedTask) {
-    errors.task = 'Task is required.';
+    errors.task = i18n.t('timesheets:validation.taskRequired');
   } else if (normalizedTask.length > MAX_TASK_LENGTH) {
-    errors.task = `Task must have at most ${MAX_TASK_LENGTH} characters.`;
+    errors.task = i18n.t('timesheets:validation.taskMaxLength', { max: MAX_TASK_LENGTH });
   } else if (!/[\p{L}\p{N}]/u.test(normalizedTask)) {
-    errors.task = 'Task must contain letters or numbers.';
+    errors.task = i18n.t('timesheets:validation.taskAlphanumeric');
   }
 
   if (!hoursInput.trim()) {
-    errors.hours = 'Hours is required.';
+    errors.hours = i18n.t('timesheets:validation.hoursRequired');
   } else if (parsedHours === null) {
-    errors.hours = 'Use a valid number with up to 2 decimals.';
+    errors.hours = i18n.t('timesheets:validation.hoursInvalidFormat');
   } else if (parsedHours < MIN_HOURS || parsedHours > MAX_HOURS) {
-    errors.hours = `Hours must be between ${MIN_HOURS} and ${MAX_HOURS}.`;
+    errors.hours = i18n.t('timesheets:validation.hoursRange', { min: MIN_HOURS, max: MAX_HOURS });
   }
 
   return errors;
@@ -111,6 +113,7 @@ export function EntryFormModal({
   onDuplicate,
 }: EntryFormModalProps) {
   const colors = useTheme();
+  const { t } = useTranslation('timesheets');
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<EntryInput>(initial);
   const [hoursInput, setHoursInput] = useState(initial.hours === 0 ? '' : String(initial.hours));
@@ -188,7 +191,7 @@ export function EntryFormModal({
             onPress={handleSave}
             activeOpacity={0.75}
           >
-            <Text style={[styles.saveBtnText, { color: colors.white }]}>Save</Text>
+            <Text style={[styles.saveBtnText, { color: colors.white }]}>{t('common:save')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -202,14 +205,14 @@ export function EntryFormModal({
           >
             <View style={styles.field}>
               <TextField
-                label="Project"
+                label={t('form.project')}
                 value={form.project}
                 onChangeText={(v) => {
                   setTouched((current) => ({ ...current, project: true }));
                   setForm((f) => ({ ...f, project: v }));
                 }}
                 onBlur={() => setTouched((current) => ({ ...current, project: true }))}
-                placeholder="e.g. ARMIS Platform"
+                placeholder={t('form.projectPlaceholder')}
                 returnKeyType="next"
                 maxLength={MAX_PROJECT_LENGTH}
                 errorText={touched.project ? validationErrors.project : undefined}
@@ -218,14 +221,14 @@ export function EntryFormModal({
 
             <View style={styles.field}>
               <TextField
-                label="Task"
+                label={t('form.task')}
                 value={form.task}
                 onChangeText={(v) => {
                   setTouched((current) => ({ ...current, task: true }));
                   setForm((f) => ({ ...f, task: v }));
                 }}
                 onBlur={() => setTouched((current) => ({ ...current, task: true }))}
-                placeholder="e.g. Frontend development"
+                placeholder={t('form.taskPlaceholder')}
                 returnKeyType="next"
                 maxLength={MAX_TASK_LENGTH}
                 errorText={touched.task ? validationErrors.task : undefined}
@@ -234,7 +237,7 @@ export function EntryFormModal({
 
             <View style={styles.field}>
               <TextField
-                label="Hours"
+                label={t('form.hours')}
                 value={hoursInput}
                 onChangeText={(v) => {
                   setTouched((current) => ({ ...current, hours: true }));
@@ -248,7 +251,7 @@ export function EntryFormModal({
                 }}
                 onBlur={() => setTouched((current) => ({ ...current, hours: true }))}
                 keyboardType="decimal-pad"
-                placeholder="8"
+                placeholder={t('form.hoursPlaceholder')}
                 returnKeyType="done"
                 errorText={touched.hours ? validationErrors.hours : undefined}
               />
@@ -256,11 +259,11 @@ export function EntryFormModal({
 
             <View style={styles.field}>
               <SelectField
-                label="Status"
+                label={t('form.status')}
                 value={form.status}
                 placeholder="Select..."
                 options={ALL_STATUSES}
-                getOptionLabel={(status) => STATUS_LABELS[status as (typeof ALL_STATUSES)[number]]}
+                getOptionLabel={(status) => t(`status.${status}`)}
                 onChange={(status) => setForm((current) => ({ ...current, status: status as EntryInput['status'] }))}
               />
             </View>
@@ -274,13 +277,13 @@ export function EntryFormModal({
               {onDuplicate && (
                 <TouchableOpacity style={styles.navAction} onPress={handleDuplicate} activeOpacity={0.75}>
                   <CopySimpleIcon size={22} color={colors.textSecondary} />
-                  <Text style={[styles.navActionText, { color: colors.textSecondary }]}>Duplicate</Text>
+                  <Text style={[styles.navActionText, { color: colors.textSecondary }]}>{t('common:duplicate')}</Text>
                 </TouchableOpacity>
               )}
               {onDelete && (
                 <TouchableOpacity style={styles.navAction} onPress={handleDelete} activeOpacity={0.75}>
                   <TrashIcon size={22} color={colors.error} />
-                  <Text style={[styles.navActionText, { color: colors.error }]}>Delete</Text>
+                  <Text style={[styles.navActionText, { color: colors.error }]}>{t('common:delete')}</Text>
                 </TouchableOpacity>
               )}
             </View>

@@ -1,16 +1,18 @@
 import { useTheme } from '@/src/theme';
 import { useThemeStore } from '@/src/stores/useThemeStore';
-import { SETTINGS_COPY, SETTINGS_THEME_OPTIONS } from '@/src/constants/settings.constants';
+import { THEME_IDS } from '@/src/constants/settings.constants';
 import { themes, type ThemeId } from '@/src/theme/colors';
 import { Spacing, Typography } from '@/src/theme';
 import { CheckIcon } from 'phosphor-react-native';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { useLanguageStore, type SupportedLanguage } from '@/src/stores/useLanguageStore';
 
 function ThemeCard({ themeId, isActive }: { themeId: ThemeId; isActive: boolean }) {
   const colors = useTheme();
+  const { t } = useTranslation('settings');
   const { setTheme } = useThemeStore();
-  const t = themes[themeId];
-  const option = SETTINGS_THEME_OPTIONS.find((o) => o.id === themeId)!;
+  const themeColors = themes[themeId];
 
   return (
     <TouchableOpacity
@@ -26,22 +28,22 @@ function ThemeCard({ themeId, isActive }: { themeId: ThemeId; isActive: boolean 
       activeOpacity={0.75}
       accessibilityRole="radio"
       accessibilityState={{ checked: isActive }}
-      accessibilityLabel={`${option.label} theme`}
+      accessibilityLabel={`${t(`themes.${themeId}.label`)} theme`}
     >
       {/* Color swatches */}
       <View style={styles.swatches}>
-        <View style={[styles.swatch, { backgroundColor: t.background }]} />
-        <View style={[styles.swatch, { backgroundColor: t.surface }]} />
-        <View style={[styles.swatch, { backgroundColor: t.textPrimary }]} />
-        <View style={[styles.swatch, { backgroundColor: t.bubbleUser }]} />
-        <View style={[styles.swatch, { backgroundColor: t.sidebarBackground }]} />
+        <View style={[styles.swatch, { backgroundColor: themeColors.background }]} />
+        <View style={[styles.swatch, { backgroundColor: themeColors.surface }]} />
+        <View style={[styles.swatch, { backgroundColor: themeColors.textPrimary }]} />
+        <View style={[styles.swatch, { backgroundColor: themeColors.bubbleUser }]} />
+        <View style={[styles.swatch, { backgroundColor: themeColors.sidebarBackground }]} />
       </View>
 
       {/* Label row */}
       <View style={styles.cardBottom}>
         <View style={styles.cardText}>
-          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{option.label}</Text>
-          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{option.description}</Text>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t(`themes.${themeId}.label`)}</Text>
+          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{t(`themes.${themeId}.description`)}</Text>
         </View>
         {isActive && (
           <View style={[styles.checkBadge, { backgroundColor: colors.textPrimary }]}>
@@ -55,7 +57,9 @@ function ThemeCard({ themeId, isActive }: { themeId: ThemeId; isActive: boolean 
 
 export default function SettingsScreen() {
   const colors = useTheme();
+  const { t } = useTranslation('settings');
   const { themeId } = useThemeStore();
+  const { language, setLanguage } = useLanguageStore();
 
   return (
     <ScrollView
@@ -64,16 +68,57 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>{SETTINGS_COPY.sectionLabel}</Text>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{SETTINGS_COPY.title}</Text>
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>{t('appearance.sectionLabel')}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('appearance.title')}</Text>
         <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-          {SETTINGS_COPY.subtitle}
+          {t('appearance.subtitle')}
         </Text>
       </View>
 
       <View style={styles.grid}>
-        {SETTINGS_THEME_OPTIONS.map((option) => (
-          <ThemeCard key={option.id} themeId={option.id} isActive={themeId === option.id} />
+        {THEME_IDS.map((id) => (
+          <ThemeCard key={id} themeId={id} isActive={themeId === id} />
+        ))}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>{t('language.sectionLabel')}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('language.title')}</Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+          {t('language.subtitle')}
+        </Text>
+      </View>
+
+      <View style={styles.grid}>
+        {(['en', 'pt'] as const).map((lang) => (
+          <TouchableOpacity
+            key={lang}
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.surface,
+                borderColor: language === lang ? colors.borderDark : colors.border,
+                borderWidth: language === lang ? 2 : 1,
+              },
+            ]}
+            onPress={() => setLanguage(lang)}
+            activeOpacity={0.75}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: language === lang }}
+            accessibilityLabel={t(`languages.${lang}.label`)}
+          >
+            <View style={styles.cardBottom}>
+              <View style={styles.cardText}>
+                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t(`languages.${lang}.label`)}</Text>
+                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{t(`languages.${lang}.description`)}</Text>
+              </View>
+              {language === lang && (
+                <View style={[styles.checkBadge, { backgroundColor: colors.textPrimary }]}>
+                  <CheckIcon size={12} color={colors.textInverse} weight="bold" />
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
         ))}
       </View>
     </ScrollView>

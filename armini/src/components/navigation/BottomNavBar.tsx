@@ -4,6 +4,7 @@ import { ClockIcon, CurrencyDollarIcon, DotsThreeCircleIcon, HouseIcon, type Ico
 import { usePathname, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -17,14 +18,14 @@ interface NavItem {
   IconComponent: Icon;
   href: Href;
   route: string;
-  label: string;
+  labelKey: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { IconComponent: HouseIcon, href: '/(main)/home' as Href, route: '/home', label: 'Home' },
-  { IconComponent: CurrencyDollarIcon, href: '/(main)/finances' as Href, route: '/finances', label: 'Finances' },
-  { IconComponent: ClockIcon, href: '/(main)/timesheets' as Href, route: '/timesheets', label: 'Timesheets' },
-  { IconComponent: DotsThreeCircleIcon, href: '/(main)/more' as Href, route: '/more', label: 'More' },
+  { IconComponent: HouseIcon, href: '/(main)/home' as Href, route: '/home', labelKey: 'nav.home' },
+  { IconComponent: CurrencyDollarIcon, href: '/(main)/finances' as Href, route: '/finances', labelKey: 'nav.finances' },
+  { IconComponent: ClockIcon, href: '/(main)/timesheets' as Href, route: '/timesheets', labelKey: 'nav.timesheets' },
+  { IconComponent: DotsThreeCircleIcon, href: '/(main)/more' as Href, route: '/more', labelKey: 'nav.more' },
 ];
 
 const ITEM_WIDTH = 80;
@@ -36,6 +37,7 @@ interface BottomNavBarProps {
 
 export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
   const colors = useTheme();
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -83,7 +85,7 @@ export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
               }}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
-              accessibilityLabel={item.label}
+              accessibilityLabel={t(item.labelKey)}
             >
               <item.IconComponent
                 size={22}
@@ -91,7 +93,7 @@ export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
                 weight={'bold'}
               />
               <Text style={[styles.label, { color: isActive ? colors.black : colors.gray400 }, isActive && styles.labelActive]}>
-                {item.label}
+                {t(item.labelKey)}
               </Text>
             </TouchableOpacity>
           );

@@ -1,0 +1,73 @@
+{
+  "pageTitle": "Manual Expenses",
+  "pageSubtitle": "Manually register your expenses using the form below.",
+  "totalExpenses": "Total Expenses",
+  "newExpense": "New expense",
+  "scanReceipt": "Scan receipt",
+  "scanning": "Scanning...",
+  "recentEntries": "Recent entries",
+  "noExpensesTitle": "No expenses yet",
+  "noExpensesSubtitle": "Your manually added expenses will appear here.",
+  "expense": "Expense",
+  "editExpense": "Edit Expense",
+  "newExpenseTitle": "New Expense",
+  "deleteExpense": "Delete expense",
+  "fillRandom": "⚡ Fill with random data",
+  "scanReceiptTitle": "Scan Receipt",
+  "chooseImageSource": "Choose image source",
+  "chooseDocumentType": "Choose document type",
+  "takePhoto": "Take Photo",
+  "chooseFromLibrary": "Choose from Library",
+  "photo": "Photo",
+  "pdfDocument": "PDF Document",
+  "scanFailed": "Scan failed",
+  "scanFailedImage": "Could not extract data from the image. Please try again or enter manually.",
+  "scanFailedDocument": "Could not extract data from the document. Please try again or enter manually.",
+  "form": {
+    "date": "Date",
+    "datePlaceholder": "mm/dd/yyyy",
+    "productiveProject": "Productive Project",
+    "productiveProjectHelper": "Select the project of the company you belong to.",
+    "partnerProject": "Partner Project",
+    "partnerProjectHelper": "Fill in only if the expense belongs to a partner company.",
+    "expenseType": "Expense Type",
+    "quantity": "Quantity",
+    "unitValue": "Unit Value",
+    "currency": "Currency",
+    "observations": "Observations",
+    "expenseRepresentation": "Expense in Representation of?"
+  },
+  "formOptions": {
+    "productiveProjects": {
+      "digitalHub": "Digital Hub",
+      "internalRD": "Internal R&D",
+      "armisPlatform": "ARMIS Platform"
+    },
+    "partnerProjects": {
+      "none": "None",
+      "clientProjectA": "Client Project A",
+      "clientProjectB": "Client Project B"
+    },
+    "expenseTypes": {
+      "travel": "Travel",
+      "meal": "Meal",
+      "accommodation": "Accommodation",
+      "officeSupplies": "Office Supplies",
+      "others": "Others"
+    }
+  },
+  "validation": {
+    "dateInvalid": "Select a valid date.",
+    "productiveProjectRequired": "Productive project is required.",
+    "productiveProjectInvalid": "Select a valid productive project.",
+    "expenseTypeRequired": "Expense type is required.",
+    "expenseTypeInvalid": "Select a valid expense type.",
+    "currencyRequired": "Currency is required.",
+    "currencyInvalid": "Select a valid currency.",
+    "quantityInvalid": "Quantity must be a whole number.",
+    "quantityRange": "Quantity must be between 1 and {{max}}.",
+    "unitValueInvalid": "Use a valid value with up to 2 decimals.",
+    "unitValueRange": "Unit value must be greater than 0 and at most {{max}}.",
+    "observationsMaxLength": "Observations must have at most {{max}} characters."
+  }
+}

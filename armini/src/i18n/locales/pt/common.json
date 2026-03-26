@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "home": "Início",
+    "finances": "Finanças",
+    "timesheets": "Horas",
+    "more": "Mais"
+  },
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "delete": "Eliminar",
+  "edit": "Editar",
+  "duplicate": "Duplicar",
+  "retry": "Tentar novamente",
+  "dismiss": "Fechar",
+  "back": "Voltar",
+  "close": "Fechar",
+  "loading": "A carregar…",
+  "error": {
+    "somethingWentWrong": "Algo correu mal",
+    "generic": "Ocorreu um erro inesperado.",
+    "tapToRetry": "Toque para tentar novamente"
+  },
+  "permission": {
+    "required": "Permissão necessária",
+    "camera": "É necessário acesso à câmara para tirar uma foto.",
+    "photoLibrary": "É necessário acesso à galeria de fotos.",
+    "cameraReceipt": "É necessário acesso à câmara para digitalizar recibos."
+  },
+  "imagePicker": {
+    "cancel": "Cancelar",
+    "takePhoto": "Tirar Foto",
+    "chooseFromLibrary": "Escolher da Galeria",
+    "choosePdf": "Escolher PDF"
+  },
+  "camera": "Câmara",
+  "gallery": "Galeria",
+  "couldNotOpenCamera": "Não foi possível abrir a câmara.",
+  "couldNotOpenPhotoLibrary": "Não foi possível abrir a galeria de fotos.",
+  "removeImage": "Remover imagem",
+  "sidebar": {
+    "employee": "Colaborador · ARMIS",
+    "account": "Conta",
+    "profile": "Perfil",
+    "notifications": "Notificações",
+    "application": "Aplicação",
+    "settings": "Definições",
+    "helpAndSupport": "Ajuda & Suporte",
+    "about": "Sobre",
+    "logout": "Terminar sessão",
+    "closeProfile": "Fechar perfil",
+    "version": "{{appName}} · v1.0"
+  }
+}

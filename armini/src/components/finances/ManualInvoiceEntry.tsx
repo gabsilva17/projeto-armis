@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '@/src/i18n';
 import { Button } from '@/src/components/ui/Button';
 import { DateField } from '@/src/components/ui/DateField';
 import { SelectField } from '@/src/components/ui/SelectField';
@@ -131,41 +133,41 @@ function validateManualInvoiceForm(form: ManualExpenseForm): ManualInvoiceValida
   const unitValue = parseMoney(form.unitValue);
 
   if (!isValidDateString(form.date)) {
-    errors.date = 'Select a valid date.';
+    errors.date = i18n.t('finances:validation.dateInvalid');
   }
 
   if (!form.productiveProject.trim()) {
-    errors.productiveProject = 'Productive project is required.';
+    errors.productiveProject = i18n.t('finances:validation.productiveProjectRequired');
   } else if (!(PRODUCTIVE_PROJECT_OPTIONS as readonly string[]).includes(form.productiveProject)) {
-    errors.productiveProject = 'Select a valid productive project.';
+    errors.productiveProject = i18n.t('finances:validation.productiveProjectInvalid');
   }
 
   if (!form.expenseType.trim()) {
-    errors.expenseType = 'Expense type is required.';
+    errors.expenseType = i18n.t('finances:validation.expenseTypeRequired');
   } else if (!(EXPENSE_TYPE_OPTIONS as readonly string[]).includes(form.expenseType)) {
-    errors.expenseType = 'Select a valid expense type.';
+    errors.expenseType = i18n.t('finances:validation.expenseTypeInvalid');
   }
 
   if (!form.currency.trim()) {
-    errors.currency = 'Currency is required.';
+    errors.currency = i18n.t('finances:validation.currencyRequired');
   } else if (!(CURRENCY_OPTIONS as readonly string[]).includes(form.currency)) {
-    errors.currency = 'Select a valid currency.';
+    errors.currency = i18n.t('finances:validation.currencyInvalid');
   }
 
   if (quantity === null) {
-    errors.quantity = 'Quantity must be a whole number.';
+    errors.quantity = i18n.t('finances:validation.quantityInvalid');
   } else if (quantity < 1 || quantity > MAX_QUANTITY) {
-    errors.quantity = `Quantity must be between 1 and ${MAX_QUANTITY}.`;
+    errors.quantity = i18n.t('finances:validation.quantityRange', { max: MAX_QUANTITY });
   }
 
   if (unitValue === null) {
-    errors.unitValue = 'Use a valid value with up to 2 decimals.';
+    errors.unitValue = i18n.t('finances:validation.unitValueInvalid');
   } else if (unitValue <= 0 || unitValue > MAX_UNIT_VALUE) {
-    errors.unitValue = `Unit value must be greater than 0 and at most ${MAX_UNIT_VALUE}.`;
+    errors.unitValue = i18n.t('finances:validation.unitValueRange', { max: MAX_UNIT_VALUE });
   }
 
   if (form.observations.trim().length > MAX_OBSERVATIONS_LENGTH) {
-    errors.observations = `Observations must have at most ${MAX_OBSERVATIONS_LENGTH} characters.`;
+    errors.observations = i18n.t('finances:validation.observationsMaxLength', { max: MAX_OBSERVATIONS_LENGTH });
   }
 
   return errors;
@@ -204,6 +206,7 @@ interface ManualInvoiceModalProps {
 }
 
 function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }: ManualInvoiceModalProps) {
+  const { t } = useTranslation('finances');
   const colors = useTheme();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<ManualExpenseForm>(EMPTY_FORM);
@@ -290,26 +293,26 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
             onPress={handleCancel}
             hitSlop={HIT_SLOP.md}
             accessibilityRole="button"
-            accessibilityLabel="Close modal"
+            accessibilityLabel={t('common:close')}
           >
             <XIcon size={20} color={colors.textPrimary} />
           </TouchableOpacity>
 
-          <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{isEditMode ? 'Edit Expense' : 'New Expense'}</Text>
+          <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{isEditMode ? t('editExpense') : t('newExpenseTitle')}</Text>
 
           <TouchableOpacity
             style={[styles.saveBtn, { backgroundColor: colors.black }, isSaveDisabled && styles.saveBtnDisabled]}
             onPress={handleSave}
             activeOpacity={0.75}
             accessibilityRole="button"
-            accessibilityLabel="Save expense"
+            accessibilityLabel={t('common:save')}
           >
-            <Text style={[styles.saveBtnText, { color: colors.white }]}>Save</Text>
+            <Text style={[styles.saveBtnText, { color: colors.white }]}>{t('common:save')}</Text>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={[styles.debugBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]} onPress={handleFillRandom} activeOpacity={0.7}>
-          <Text style={[styles.debugBarText, { color: colors.textMuted }]}>⚡ Fill with random data</Text>
+          <Text style={[styles.debugBarText, { color: colors.textMuted }]}>{t('fillRandom')}</Text>
         </TouchableOpacity>
 
         <KeyboardAvoidingView style={styles.modalContentWrapper} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -319,23 +322,23 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
             showsVerticalScrollIndicator={false}
           >
             <DateField
-              label="Date"
+              label={t('form.date')}
               required
               value={form.date}
-              placeholder="mm/dd/yyyy"
+              placeholder={t('form.datePlaceholder')}
               selectedDate={selectedDate}
-              accessibilityLabel="Select expense date"
+              accessibilityLabel={t('form.date')}
               onChangeDate={handleDateChange}
               errorText={touched.date ? validationErrors.date : undefined}
             />
 
             <SelectField
-              label="Productive Project"
+              label={t('form.productiveProject')}
               required
               value={form.productiveProject}
               placeholder="Select..."
               options={PRODUCTIVE_PROJECT_OPTIONS}
-              helperText="Select the project of the company you belong to."
+              helperText={t('form.productiveProjectHelper')}
               onChange={(value) => {
                 setTouched((current) => ({ ...current, productiveProject: true }));
                 setForm((current) => ({ ...current, productiveProject: value }));
@@ -344,17 +347,17 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
             />
 
             <SelectField
-              label="Partner Project"
+              label={t('form.partnerProject')}
               value={form.partnerProject}
               placeholder="Select..."
               options={PARTNER_PROJECT_OPTIONS}
-              helperText="Fill in only if the expense belongs to a partner company."
+              helperText={t('form.partnerProjectHelper')}
               optionToValue={(option) => (option === 'None' ? '' : option)}
               onChange={(value) => setForm((current) => ({ ...current, partnerProject: value }))}
             />
 
             <SelectField
-              label="Expense Type"
+              label={t('form.expenseType')}
               required
               value={form.expenseType}
               placeholder="Select..."
@@ -368,7 +371,7 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
 
             <View style={styles.fieldBlock}>
               <TextField
-                label="Quantity"
+                label={t('form.quantity')}
                 required
                 value={form.quantity}
                 onChangeText={(value) => {
@@ -385,7 +388,7 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
             <View style={styles.rowFields}>
               <View style={[styles.fieldBlock, styles.flexOne]}>
                 <TextField
-                  label="Unit Value"
+                  label={t('form.unitValue')}
                   required
                   value={form.unitValue}
                   onChangeText={(value) => {
@@ -393,19 +396,19 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
                     setForm((current) => ({ ...current, unitValue: value }));
                   }}
                   onBlur={() => setTouched((current) => ({ ...current, unitValue: true }))}
-                  placeholder="Unit Value"
+                  placeholder={t('form.unitValue')}
                   keyboardType="decimal-pad"
                   errorText={touched.unitValue ? validationErrors.unitValue : undefined}
                 />
               </View>
 
               <View style={[styles.fieldBlock, styles.currencyField]}>
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Currency<Text style={styles.requiredMark}> *</Text></Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t('form.currency')}<Text style={styles.requiredMark}> *</Text></Text>
                 <SelectField
                   value={form.currency}
                   placeholder="EUR"
                   options={CURRENCY_OPTIONS}
-                  accessibilityLabel="Currency"
+                  accessibilityLabel={t('form.currency')}
                   onChange={(value) => {
                     setTouched((current) => ({ ...current, currency: true }));
                     setForm((current) => ({ ...current, currency: value }));
@@ -417,14 +420,14 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
 
             <View style={styles.fieldBlock}>
               <TextField
-                label="Observations"
+                label={t('form.observations')}
                 value={form.observations}
                 onChangeText={(value) => {
                   setTouched((current) => ({ ...current, observations: true }));
                   setForm((current) => ({ ...current, observations: value }));
                 }}
                 onBlur={() => setTouched((current) => ({ ...current, observations: true }))}
-                placeholder="Observations"
+                placeholder={t('form.observations')}
                 multiline
                 numberOfLines={5}
                 textAlignVertical="top"
@@ -436,7 +439,7 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
             </View>
 
             <View style={styles.checkboxRow}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Expense in Representation of?</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t('form.expenseRepresentation')}</Text>
               <Pressable
                 style={[styles.checkbox, { borderColor: colors.border, backgroundColor: colors.surface }, form.expenseRepresentation && [styles.checkboxChecked, { backgroundColor: colors.black, borderColor: colors.black }]]}
                 onPress={() =>
@@ -458,10 +461,10 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
                 onPress={() => animateClose(() => { onDelete(); onClose(); })}
                 activeOpacity={0.75}
                 accessibilityRole="button"
-                accessibilityLabel="Delete expense"
+                accessibilityLabel={t('deleteExpense')}
               >
                 <TrashIcon size={16} color={colors.error} weight="bold" />
-                <Text style={[styles.deleteBtnText, { color: colors.error }]}>Delete expense</Text>
+                <Text style={[styles.deleteBtnText, { color: colors.error }]}>{t('deleteExpense')}</Text>
               </TouchableOpacity>
             ) : null}
           </ScrollView>
@@ -472,6 +475,7 @@ function ManualInvoiceModal({ visible, onClose, onSave, initialEntry, onDelete }
 }
 
 export function ManualInvoiceEntry() {
+  const { t } = useTranslation('finances');
   const colors = useTheme();
   const alert = useAlert();
   const [newModalVisible, setNewModalVisible] = useState(false);
@@ -489,7 +493,7 @@ export function ManualInvoiceEntry() {
     if (mode === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        alert('Permission needed', 'Camera access is required to scan receipts.');
+        alert(t('common:permission.required'), t('common:permission.cameraReceipt'));
         return;
       }
     }
@@ -526,7 +530,7 @@ export function ManualInvoiceEntry() {
       setScanInitialData(preFilled);
       setScanModalVisible(true);
     } catch {
-      alert('Scan failed', 'Could not extract data from the image. Please try again or enter manually.');
+      alert(t('scanFailed'), t('scanFailedImage'));
     } finally {
       setIsScanning(false);
     }
@@ -571,25 +575,25 @@ export function ManualInvoiceEntry() {
       setScanInitialData(preFilled);
       setScanModalVisible(true);
     } catch {
-      alert('Scan failed', 'Could not extract data from the document. Please try again or enter manually.');
+      alert(t('scanFailed'), t('scanFailedDocument'));
     } finally {
       setIsScanning(false);
     }
   }, [alert]);
 
   const showImageSourceOptions = useCallback(() => {
-    alert('Scan Receipt', 'Choose image source', [
-      { text: 'Take Photo', onPress: () => handleScanReceipt('camera') },
-      { text: 'Choose from Library', onPress: () => handleScanReceipt('gallery') },
-      { text: 'Cancel', style: 'cancel' },
+    alert(t('scanReceiptTitle'), t('chooseImageSource'), [
+      { text: t('takePhoto'), onPress: () => handleScanReceipt('camera') },
+      { text: t('chooseFromLibrary'), onPress: () => handleScanReceipt('gallery') },
+      { text: t('common:cancel'), style: 'cancel' },
     ]);
   }, [alert, handleScanReceipt]);
 
   const showScanOptions = useCallback(() => {
-    alert('Scan Receipt', 'Choose document type', [
-      { text: 'Photo', onPress: showImageSourceOptions },
-      { text: 'PDF Document', onPress: handleScanDocument },
-      { text: 'Cancel', style: 'cancel' },
+    alert(t('scanReceiptTitle'), t('chooseDocumentType'), [
+      { text: t('photo'), onPress: showImageSourceOptions },
+      { text: t('pdfDocument'), onPress: handleScanDocument },
+      { text: t('common:cancel'), style: 'cancel' },
     ]);
   }, [alert, showImageSourceOptions, handleScanDocument]);
 
@@ -613,13 +617,13 @@ export function ManualInvoiceEntry() {
       >
         <View style={styles.pageHeader}>
           <View style={styles.headerTextContainer}>
-            <Text style={[styles.pageTitle, { color: colors.textPrimary }]}>Manual Expenses</Text>
-            <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Manually register your expenses using the form below.</Text>
+            <Text style={[styles.pageTitle, { color: colors.textPrimary }]}>{t('pageTitle')}</Text>
+            <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>{t('pageSubtitle')}</Text>
           </View>
         </View>
 
         <View style={styles.summaryBlock}>
-          <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Expenses</Text>
+          <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t('totalExpenses')}</Text>
           <View style={styles.summaryValueRow}>
             <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{totalValue}</Text>
             <Text style={[styles.summaryCurrency, { color: colors.textMuted }]}>EUR</Text>
@@ -628,15 +632,15 @@ export function ManualInvoiceEntry() {
 
         <View style={styles.buttonRow}>
           <Button
-            label="New expense"
+            label={t('newExpense')}
             onPress={() => setNewModalVisible(true)}
             icon={<PlusIcon size={16} color={colors.white} weight="bold" />}
-            accessibilityLabel="Open form to add a new expense"
+            accessibilityLabel={t('newExpense')}
             style={styles.flexOne}
           />
 
           <Button
-            label={isScanning ? 'Scanning...' : 'Scan receipt'}
+            label={isScanning ? t('scanning') : t('scanReceipt')}
             onPress={showScanOptions}
             variant="secondary"
             icon={isScanning
@@ -644,14 +648,14 @@ export function ManualInvoiceEntry() {
               : <CameraIcon size={16} color={colors.textPrimary} weight="bold" />
             }
             disabled={isScanning}
-            accessibilityLabel="Scan a receipt photo to auto-fill expense"
+            accessibilityLabel={t('scanReceipt')}
             style={styles.flexOne}
           />
         </View>
 
         <View style={styles.entriesSection}>
           <View style={styles.entriesHeader}>
-            <Text style={[styles.entriesTitle, { color: colors.textSecondary }]}>Recent entries</Text>
+            <Text style={[styles.entriesTitle, { color: colors.textSecondary }]}>{t('recentEntries')}</Text>
             {entries.length > 0 && (
               <Text style={[styles.entriesCount, { color: colors.textMuted }]}>{entries.length}</Text>
             )}
@@ -661,8 +665,8 @@ export function ManualInvoiceEntry() {
             <View style={styles.emptyStateContainer}>
               <EmptyState 
                 icon={null} 
-                title="No expenses yet" 
-                subtitle="Your manually added expenses will appear here." 
+                title={t('noExpensesTitle')}
+                subtitle={t('noExpensesSubtitle')} 
               />
             </View>
           ) : (
@@ -674,13 +678,13 @@ export function ManualInvoiceEntry() {
                   onPress={() => setEditingEntry(entry)}
                   activeOpacity={0.7}
                   accessibilityRole="button"
-                  accessibilityLabel={`Edit expense ${entry.expenseType || 'Expense'}`}
+                  accessibilityLabel={`${t('common:edit')} ${entry.expenseType || t('expense')}`}
                 >
                   <View style={[styles.entryStatusBar, { backgroundColor: colors.black }]} />
 
                   <View style={styles.entryInfo}>
                     <Text style={[styles.entryTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-                      {entry.expenseType || 'Expense'}
+                      {entry.expenseType || t('expense')}
                     </Text>
                     <Text style={[styles.entrySubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
                       {entry.productiveProject}

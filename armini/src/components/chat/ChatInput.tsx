@@ -1,11 +1,12 @@
 import { Shadows, Spacing, Typography, useTheme } from '@/src/theme';
 import { ANIMATION_DURATIONS, EASING } from '@/src/constants/animation.constants';
-import { IMAGE_PICKER_SHEET, IMAGE_UPLOAD_CONFIG } from '@/src/constants/image.constants';
+import { IMAGE_UPLOAD_CONFIG } from '@/src/constants/image.constants';
 import { HIT_SLOP } from '@/src/constants/ui.constants';
 import { useAlert } from '@/src/contexts/AlertContext';
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowUpIcon, CameraIcon, ImagesIcon, PaperclipIcon, XIcon } from 'phosphor-react-native';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActionSheetIOS,
   Image,
@@ -35,6 +36,7 @@ interface ChatInputProps {
 
 export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled = false, focusSignal = 0 }: ChatInputProps) {
   const colors = useTheme();
+  const { t } = useTranslation();
   const alert = useAlert();
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string } | null>(null);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
@@ -80,7 +82,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          alert('Permission required', 'Camera access is needed to take a photo.');
+          alert(t('permission.required'), t('permission.camera'));
           return;
         }
       }
@@ -93,7 +95,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
         setPendingImage({ uri: result.assets[0].uri, base64: result.assets[0].base64 ?? '' });
       }
     } catch (err: unknown) {
-      alert('Error', err instanceof Error ? err.message : 'Could not open camera.');
+      alert(t('error.somethingWentWrong'), err instanceof Error ? err.message : t('couldNotOpenCamera'));
     }
   };
 
@@ -103,7 +105,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-          alert('Permission required', 'Photo library access is needed.');
+          alert(t('permission.required'), t('permission.photoLibrary'));
           return;
         }
       }
@@ -116,14 +118,14 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
         setPendingImage({ uri: result.assets[0].uri, base64: result.assets[0].base64 ?? '' });
       }
     } catch (err: unknown) {
-      alert('Error', err instanceof Error ? err.message : 'Could not open photo library.');
+      alert(t('error.somethingWentWrong'), err instanceof Error ? err.message : t('couldNotOpenPhotoLibrary'));
     }
   };
 
   const handleClipPress = () => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: [...IMAGE_PICKER_SHEET.options], cancelButtonIndex: IMAGE_PICKER_SHEET.cancelButtonIndex },
+        { options: [t('common:cancel'), t('imagePicker.takePhoto'), t('imagePicker.chooseFromLibrary')], cancelButtonIndex: 0 },
         (index) => {
           if (index === 1) takePhoto();
           if (index === 2) pickFromLibrary();
@@ -150,7 +152,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
               onPress={() => setPendingImage(null)}
               hitSlop={HIT_SLOP.sm}
               accessibilityRole="button"
-              accessibilityLabel="Remove image"
+              accessibilityLabel={t('removeImage')}
             >
               <XIcon size={11} color={colors.white} weight="bold" />
             </Pressable>
@@ -169,20 +171,20 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
             style={({ pressed }) => [styles.attachOption, pressed && { backgroundColor: colors.surface }]}
             onPress={takePhoto}
             accessibilityRole="button"
-            accessibilityLabel="Take photo"
+            accessibilityLabel={t('imagePicker.takePhoto')}
           >
             <CameraIcon size={19} color={colors.textPrimary} weight="fill" />
-            <Text style={[styles.attachOptionLabel, { color: colors.textPrimary }]}>Camera</Text>
+            <Text style={[styles.attachOptionLabel, { color: colors.textPrimary }]}>{t('camera')}</Text>
           </Pressable>
           <View style={[styles.attachDivider, { backgroundColor: colors.border }]} />
           <Pressable
             style={({ pressed }) => [styles.attachOption, pressed && { backgroundColor: colors.surface }]}
             onPress={pickFromLibrary}
             accessibilityRole="button"
-            accessibilityLabel="Choose from gallery"
+            accessibilityLabel={t('imagePicker.chooseFromLibrary')}
           >
             <ImagesIcon size={19} color={colors.textPrimary} weight="fill" />
-            <Text style={[styles.attachOptionLabel, { color: colors.textPrimary }]}>Gallery</Text>
+            <Text style={[styles.attachOptionLabel, { color: colors.textPrimary }]}>{t('gallery')}</Text>
           </Pressable>
         </Animated.View>
       )}
@@ -214,7 +216,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
           ref={inputRef}
           value={value}
           onChangeText={onChangeText}
-          placeholder={pendingImage ? 'Add a caption…' : 'Chat with ARMINI…'}
+          placeholder={pendingImage ? t('chat:inputPlaceholderWithImage') : t('chat:inputPlaceholder')}
           placeholderTextColor={colors.textMuted}
           multiline
           maxLength={2000}
@@ -222,7 +224,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
           onSubmitEditing={() => { void handleSend(); }}
           blurOnSubmit={false}
           editable={!disabled}
-          accessibilityLabel="Message input"
+          accessibilityLabel={t('chat:messageInput')}
         />
 
         <Pressable
@@ -231,7 +233,7 @@ export function ChatInput({ value, onChangeText, onSend, onSendImage, disabled =
           style={styles.sendButton}
           hitSlop={HIT_SLOP.md}
           accessibilityRole="button"
-          accessibilityLabel="Send message"
+          accessibilityLabel={t('chat:sendMessage')}
         >
           <ArrowUpIcon size={20} color={canSend ? colors.textPrimary : colors.gray400} weight="bold" />
         </Pressable>

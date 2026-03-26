@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import type { AiResponsePayload, Message, MessageAction, SuggestionChip } from '../../types/chat.types';
 import type { AnthropicMessage, ContentBlock } from '../api/anthropic';
 import type { RecentTimesheetContext } from '../timesheets/timesheetsService';
@@ -7,10 +8,12 @@ const EXPENSE_OPTIONS_MARKER = '[EXPENSE_OPTIONS]';
 // Matches [SUGGESTIONS], <suggestions>, </suggestions> and similar variations the LLM may produce.
 const SUGGESTIONS_BLOCK_RE = /(?:\[SUGGESTIONS\]|<\/?suggestions>)/i;
 
-const EXPENSE_ACTIONS: MessageAction[] = [
-  { id: 'expense-chat', label: 'Inserir por chat', icon: 'chat', actionType: 'chat-expense' },
-  { id: 'expense-photo', label: 'Enviar foto', icon: 'camera', actionType: 'photo-expense' },
-];
+function getExpenseActions(): MessageAction[] {
+  return [
+    { id: 'expense-chat', label: i18n.t('chat:expenseActions.chat'), icon: 'chat', actionType: 'chat-expense' },
+    { id: 'expense-photo', label: i18n.t('chat:expenseActions.photo'), icon: 'camera', actionType: 'photo-expense' },
+  ];
+}
 
 export function adaptHistoryToAnthropicMessages(history: Message[]): AnthropicMessage[] {
   return history
@@ -64,7 +67,7 @@ export function adaptAnthropicTextToAiMessage(responseText: string, now = new Da
     content,
     sender: 'ai',
     timestamp: now,
-    ...(hasExpenseOptions && { actions: EXPENSE_ACTIONS }),
+    ...(hasExpenseOptions && { actions: getExpenseActions() }),
   };
 }
 

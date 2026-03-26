@@ -1,0 +1,62 @@
+{
+  "months": {
+    "0": "January",
+    "1": "February",
+    "2": "March",
+    "3": "April",
+    "4": "May",
+    "5": "June",
+    "6": "July",
+    "7": "August",
+    "8": "September",
+    "9": "October",
+    "10": "November",
+    "11": "December"
+  },
+  "days": {
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun"
+  },
+  "dayLabels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  "status": {
+    "approved": "Approved",
+    "pending": "Pending",
+    "draft": "Draft"
+  },
+  "summary": {
+    "total": "Total",
+    "daysLogged": "Days logged"
+  },
+  "dayDetail": {
+    "hoursLogged": "{{totalHours}} hours logged",
+    "noHoursLogged": "No hours logged",
+    "emptyDay": "No work this day, phew."
+  },
+  "form": {
+    "addEntry": "Add Entry",
+    "editEntry": "Edit Entry",
+    "project": "Project",
+    "projectPlaceholder": "e.g. ARMIS Platform",
+    "task": "Task",
+    "taskPlaceholder": "e.g. Frontend development",
+    "hours": "Hours",
+    "hoursPlaceholder": "8",
+    "status": "Status"
+  },
+  "validation": {
+    "projectRequired": "Project is required.",
+    "projectMaxLength": "Project must have at most {{max}} characters.",
+    "projectAlphanumeric": "Project must contain letters or numbers.",
+    "taskRequired": "Task is required.",
+    "taskMaxLength": "Task must have at most {{max}} characters.",
+    "taskAlphanumeric": "Task must contain letters or numbers.",
+    "hoursRequired": "Hours is required.",
+    "hoursInvalidFormat": "Use a valid number with up to 2 decimals.",
+    "hoursRange": "Hours must be between {{min}} and {{max}}."
+  }
+}

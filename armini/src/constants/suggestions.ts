@@ -1,24 +1,27 @@
+import i18n from '../i18n';
 import type { SuggestionChip } from '../types/chat.types';
 
-export const DEFAULT_SUGGESTIONS: SuggestionChip[] = [
-  {
-    id: '1',
-    label: 'Review my last 15 days',
-    prompt: 'Can you review my last 15 days and tell me what stands out?',
-  },
-  {
-    id: '2',
-    label: 'Check today entries',
-    prompt: 'What do I already have logged for today, and is anything missing?',
-  },
-  {
-    id: '3',
-    label: 'Find missing workdays',
-    prompt: 'Which workdays in the last 15 days have no entries, excluding weekends?',
-  },
-  {
-    id: '4',
-    label: 'Suggest next logs',
-    prompt: 'Suggest what I should log next for the missing workdays, without submitting anything.',
-  },
-];
+export function getDefaultSuggestions(): SuggestionChip[] {
+  return [
+    {
+      id: '1',
+      label: i18n.t('chat:suggestions.reviewLast15Days.label'),
+      prompt: i18n.t('chat:suggestions.reviewLast15Days.prompt'),
+    },
+    {
+      id: '2',
+      label: i18n.t('chat:suggestions.checkTodayEntries.label'),
+      prompt: i18n.t('chat:suggestions.checkTodayEntries.prompt'),
+    },
+    {
+      id: '3',
+      label: i18n.t('chat:suggestions.findMissingWorkdays.label'),
+      prompt: i18n.t('chat:suggestions.findMissingWorkdays.prompt'),
+    },
+    {
+      id: '4',
+      label: i18n.t('chat:suggestions.suggestNextLogs.label'),
+      prompt: i18n.t('chat:suggestions.suggestNextLogs.prompt'),
+    },
+  ];
+}

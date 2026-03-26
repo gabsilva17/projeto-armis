@@ -6,7 +6,8 @@ import * as Haptics from 'expo-haptics';
 import React, { useCallback } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
-import { getStatusColor, STATUS_LABELS } from './timesheetsConstants';
+import { useTranslation } from 'react-i18next';
+import { getStatusColor } from './timesheetsConstants';
 import { formatDate } from './timesheetsHelpers';
 
 interface EntryRowProps {
@@ -16,6 +17,7 @@ interface EntryRowProps {
 
 const EntryRow = React.memo(function EntryRow({ entry, onEdit }: EntryRowProps) {
   const colors = useTheme();
+  const { t } = useTranslation('timesheets');
   return (
     <Animated.View layout={LinearTransition.duration(200)}>
       <TouchableOpacity
@@ -31,7 +33,7 @@ const EntryRow = React.memo(function EntryRow({ entry, onEdit }: EntryRowProps) 
         <View style={styles.entryRight}>
           <Text style={[styles.entryHours, { color: colors.textPrimary }]}>{entry.hours}h</Text>
           <Text style={[styles.entryStatus, { color: getStatusColor(entry.status, colors) }]}>
-            {STATUS_LABELS[entry.status]}
+            {t(`status.${entry.status}`)}
           </Text>
         </View>
       </TouchableOpacity>
@@ -50,6 +52,7 @@ interface DayDetailProps {
 
 export function DayDetail({ daySummary, date, onClose, onAdd, onEdit }: DayDetailProps) {
   const colors = useTheme();
+  const { t } = useTranslation('timesheets');
 
   const handleEdit = useCallback(async (entry: TimesheetEntry) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -65,7 +68,7 @@ export function DayDetail({ daySummary, date, onClose, onAdd, onEdit }: DayDetai
         <View style={styles.dayDetailLeft}>
           <Text style={[styles.dayDetailDate, { color: colors.textPrimary }]}>{formatDate(date)}</Text>
           <Text style={[styles.dayDetailTotal, { color: colors.textSecondary }]}>
-            {totalHours > 0 ? `${totalHours} hours logged` : 'No hours logged'}
+            {totalHours > 0 ? t('dayDetail.hoursLogged', { totalHours }) : t('dayDetail.noHoursLogged')}
           </Text>
         </View>
         <View style={styles.dayDetailActions}>
@@ -79,7 +82,7 @@ export function DayDetail({ daySummary, date, onClose, onAdd, onEdit }: DayDetai
       </View>
 
       {entries.length === 0 ? (
-        <Text style={[styles.emptyEntries, { color: colors.textMuted }]}>No work this day, phew.</Text>
+        <Text style={[styles.emptyEntries, { color: colors.textMuted }]}>{t('dayDetail.emptyDay')}</Text>
       ) : (
         <Animated.View layout={LinearTransition.duration(200)} style={[styles.entriesList, { borderTopColor: colors.border }]}>
           {entries.map((entry) => (

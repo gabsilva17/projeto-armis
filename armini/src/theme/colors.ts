@@ -180,13 +180,6 @@ export type ThemeId = keyof typeof themes;
 
 export const DEFAULT_THEME_ID: ThemeId = 'light';
 
-export const THEME_CATALOG: Record<ThemeId, { label: string; description: string }> = {
-  light: { label: 'Light', description: 'Clean white interface' },
-  dark: { label: 'Dark', description: 'Easy on the eyes at night' },
-  blue: { label: 'Blue', description: 'Slate navy accent' },
-  orange: { label: 'Orange', description: 'Warm amber tones' },
-};
-
 // Backward compat — used during migration; prefer useTheme() hook
 export const Colors = themes.light;
 

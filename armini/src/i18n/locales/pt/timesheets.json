@@ -1,0 +1,62 @@
+{
+  "months": {
+    "0": "Janeiro",
+    "1": "Fevereiro",
+    "2": "Março",
+    "3": "Abril",
+    "4": "Maio",
+    "5": "Junho",
+    "6": "Julho",
+    "7": "Agosto",
+    "8": "Setembro",
+    "9": "Outubro",
+    "10": "Novembro",
+    "11": "Dezembro"
+  },
+  "days": {
+    "mon": "Seg",
+    "tue": "Ter",
+    "wed": "Qua",
+    "thu": "Qui",
+    "fri": "Sex",
+    "sat": "Sáb",
+    "sun": "Dom"
+  },
+  "dayLabels": ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
+  "status": {
+    "approved": "Aprovado",
+    "pending": "Pendente",
+    "draft": "Rascunho"
+  },
+  "summary": {
+    "total": "Total",
+    "daysLogged": "Dias registados"
+  },
+  "dayDetail": {
+    "hoursLogged": "{{totalHours}} horas registadas",
+    "noHoursLogged": "Sem horas registadas",
+    "emptyDay": "Sem trabalho neste dia, ufa."
+  },
+  "form": {
+    "addEntry": "Adicionar Registo",
+    "editEntry": "Editar Registo",
+    "project": "Projeto",
+    "projectPlaceholder": "ex. ARMIS Platform",
+    "task": "Tarefa",
+    "taskPlaceholder": "ex. Desenvolvimento frontend",
+    "hours": "Horas",
+    "hoursPlaceholder": "8",
+    "status": "Estado"
+  },
+  "validation": {
+    "projectRequired": "O projeto é obrigatório.",
+    "projectMaxLength": "O projeto deve ter no máximo {{max}} caracteres.",
+    "projectAlphanumeric": "O projeto deve conter letras ou números.",
+    "taskRequired": "A tarefa é obrigatória.",
+    "taskMaxLength": "A tarefa deve ter no máximo {{max}} caracteres.",
+    "taskAlphanumeric": "A tarefa deve conter letras ou números.",
+    "hoursRequired": "As horas são obrigatórias.",
+    "hoursInvalidFormat": "Use um número válido com até 2 casas decimais.",
+    "hoursRange": "As horas devem estar entre {{min}} e {{max}}."
+  }
+}

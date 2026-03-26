@@ -6,6 +6,7 @@ import type { QuickAction } from '@/src/types/quickActions.types';
 import { Ionicons } from '@expo/vector-icons';
 import { PlusIcon } from 'phosphor-react-native';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { QuickActionFormModal } from './QuickActionFormModal';
 
@@ -17,11 +18,26 @@ interface QuickActionsSectionProps {
 
 export function QuickActionsSection({ onNavigate, onOpenChat, onChatPrompt }: QuickActionsSectionProps) {
   const colors = useTheme();
+  const { t } = useTranslation('home');
   const alert = useAlert();
   const actions = useQuickActionsStore((s) => s.actions);
   const removeAction = useQuickActionsStore((s) => s.removeAction);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAction, setEditingAction] = useState<QuickAction | null>(null);
+
+  const getActionTitle = (action: QuickAction) => {
+    if (action.id === 'default-finances') return t('quickActions.defaultFinancesTitle');
+    if (action.id === 'default-timesheets') return t('quickActions.defaultTimesheetsTitle');
+    if (action.id === 'default-armini') return t('quickActions.defaultArminiTitle');
+    return action.title;
+  };
+
+  const getActionDescription = (action: QuickAction) => {
+    if (action.id === 'default-finances') return t('quickActions.defaultFinancesDesc');
+    if (action.id === 'default-timesheets') return t('quickActions.defaultTimesheetsDesc');
+    if (action.id === 'default-armini') return t('quickActions.defaultArminiDesc');
+    return action.description;
+  };
 
   const handlePress = (action: QuickAction) => {
     if (action.type === 'navigate' && action.route) {
@@ -34,20 +50,20 @@ export function QuickActionsSection({ onNavigate, onOpenChat, onChatPrompt }: Qu
   };
 
   const handleLongPress = (action: QuickAction) => {
-    alert(action.title, undefined, [
+    alert(getActionTitle(action), undefined, [
       {
-        text: 'Edit',
+        text: t('common:edit'),
         onPress: () => {
           setEditingAction(action);
           setModalVisible(true);
         },
       },
       {
-        text: 'Delete',
+        text: t('common:delete'),
         style: 'destructive',
         onPress: () => removeAction(action.id),
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common:cancel'), style: 'cancel' },
     ]);
   };
 
@@ -61,9 +77,9 @@ export function QuickActionsSection({ onNavigate, onOpenChat, onChatPrompt }: Qu
   return (
     <>
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Quick Actions</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('quickActions.title')}</Text>
         <Text style={[styles.sectionMeta, { color: colors.textMuted }]}>
-          {actions.length} action{actions.length !== 1 ? 's' : ''}
+          {t('quickActions.count', { count: actions.length })}
         </Text>
       </View>
 
@@ -76,19 +92,19 @@ export function QuickActionsSection({ onNavigate, onOpenChat, onChatPrompt }: Qu
             onLongPress={() => handleLongPress(action)}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel={action.title}
-            accessibilityHint="Long press to edit or delete"
+            accessibilityLabel={getActionTitle(action)}
+            accessibilityHint={t('quickActions.longPressHint')}
           >
             <Text style={[styles.actionIndex, { color: colors.textMuted }]}>
               {String(i + 1).padStart(2, '0')}
             </Text>
             <View style={styles.actionBody}>
               <Text style={[styles.actionTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-                {action.title}
+                {getActionTitle(action)}
               </Text>
-              {action.description ? (
+              {getActionDescription(action) ? (
                 <Text style={[styles.actionDescription, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {action.description}
+                  {getActionDescription(action)}
                 </Text>
               ) : null}
             </View>
@@ -105,12 +121,12 @@ export function QuickActionsSection({ onNavigate, onOpenChat, onChatPrompt }: Qu
             }}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel="Add quick action"
+            accessibilityLabel={t('quickActions.addAction')}
           >
             <View style={[styles.addIconCircle, { borderColor: colors.border }]}>
               <PlusIcon size={14} weight="bold" color={colors.textMuted} />
             </View>
-            <Text style={[styles.addLabel, { color: colors.textMuted }]}>Add quick action</Text>
+            <Text style={[styles.addLabel, { color: colors.textMuted }]}>{t('quickActions.addAction')}</Text>
           </TouchableOpacity>
         ) : null}
       </View>
