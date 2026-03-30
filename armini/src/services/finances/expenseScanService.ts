@@ -2,7 +2,9 @@ import {
   CURRENCY_OPTIONS,
   EXPENSE_TYPE_OPTIONS,
 } from '@/src/constants/formOptions.constants';
+import { FEATURES } from '@/src/constants/app.constants';
 import { callClaude, type AnthropicMessage } from '../api/anthropic';
+import { mcpScan } from '../api/mcp';
 import { createImagePromptContent, createDocumentPromptContent } from '../adapters/chatAdapter';
 import type { ManualExpenseForm } from '@/src/types/finances.types';
 
@@ -96,6 +98,12 @@ function sanitizeExtractedData(raw: ExtractedExpenseData): Partial<ManualExpense
 const SCAN_SYSTEM_CONTEXT = 'This is an automated expense scan request. Return ONLY the JSON object with extracted fields. Do not add suggestions, next steps, greetings, or any text outside the JSON.';
 
 export async function scanReceiptImage(base64: string): Promise<Partial<ManualExpenseForm>> {
+  if (FEATURES.MCP_ENABLED) {
+    const result = await mcpScan({ base64, mediaType: 'image/jpeg' });
+    return sanitizeExtractedData(result.expenseData as ExtractedExpenseData);
+  }
+
+  // Legacy Anthropic path
   const imageContent = createImagePromptContent(base64, EXPENSE_SCAN_PROMPT, EXPENSE_SCAN_PROMPT);
 
   const messages: AnthropicMessage[] = [
@@ -110,6 +118,12 @@ export async function scanReceiptImage(base64: string): Promise<Partial<ManualEx
 }
 
 export async function scanReceiptDocument(base64: string): Promise<Partial<ManualExpenseForm>> {
+  if (FEATURES.MCP_ENABLED) {
+    const result = await mcpScan({ base64, mediaType: 'application/pdf' });
+    return sanitizeExtractedData(result.expenseData as ExtractedExpenseData);
+  }
+
+  // Legacy Anthropic path
   const documentContent = createDocumentPromptContent(base64, EXPENSE_SCAN_PROMPT, EXPENSE_SCAN_PROMPT);
 
   const messages: AnthropicMessage[] = [

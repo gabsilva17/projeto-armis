@@ -1,11 +1,19 @@
 import type { MCPRequest, MCPResponse } from '../../types/api.types';
+import { ApiError } from '../../types/api.types';
+import { MCP_CONFIG, MCP_METHODS } from '../../constants/llm.constants';
+import type {
+  McpChatSendParams,
+  McpChatSendResult,
+  McpBootstrapParams,
+  McpBootstrapResult,
+  McpScanParams,
+  McpScanResult,
+} from '../../types/mcp.types';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const BASE_URL = `${MCP_CONFIG.baseUrl}${MCP_CONFIG.endpoint}`;
 
 let _requestId = 0;
 
-// TODO: When the MCP backend is ready, implement this function.
-// It should POST a JSON-RPC 2.0 request to BASE_URL/mcp and return the result.
 export async function mcpCall<T>(
   method: string,
   params: Record<string, unknown>,
@@ -17,8 +25,52 @@ export async function mcpCall<T>(
     params,
   };
 
-  // Placeholder — replace with: const response = await fetch(`${BASE_URL}/mcp`, { method: 'POST', body: JSON.stringify(request) });
-  throw new Error(
-    `Backend not connected. Would call ${BASE_URL}/mcp → ${request.method}`,
-  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), MCP_CONFIG.timeoutMs);
+
+  try {
+    const response = await fetch(BASE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        `MCP server error: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const data = (await response.json()) as MCPResponse<T>;
+
+    if (data.error) {
+      throw new ApiError(data.error.code, data.error.message);
+    }
+
+    return data.result as T;
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new ApiError(408, 'MCP request timed out');
+    }
+    throw new ApiError(500, err instanceof Error ? err.message : 'MCP call failed');
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ── Typed wrappers ──────────────────────────────────────────────────
+
+export function mcpChatSend(params: McpChatSendParams): Promise<McpChatSendResult> {
+  return mcpCall<McpChatSendResult>(MCP_METHODS.CHAT_SEND, params as unknown as Record<string, unknown>);
+}
+
+export function mcpBootstrap(params: McpBootstrapParams): Promise<McpBootstrapResult> {
+  return mcpCall<McpBootstrapResult>(MCP_METHODS.CHAT_BOOTSTRAP, params as unknown as Record<string, unknown>);
+}
+
+export function mcpScan(params: McpScanParams): Promise<McpScanResult> {
+  return mcpCall<McpScanResult>(MCP_METHODS.CHAT_SCAN, params as unknown as Record<string, unknown>);
 }

@@ -1,7 +1,7 @@
 import i18n from '../../i18n';
 import type { AiResponsePayload, Message, MessageAction, SuggestionChip } from '../../types/chat.types';
 import type { AnthropicMessage, ContentBlock } from '../api/anthropic';
-import type { RecentTimesheetContext } from '../timesheets/timesheetsService';
+import type { ChatHistoryEntry, McpChatSendResult, McpBootstrapResult } from '../../types/mcp.types';
 
 const EXPENSE_OPTIONS_MARKER = '[EXPENSE_OPTIONS]';
 
@@ -17,6 +17,7 @@ function getExpenseActions(): MessageAction[] {
 
 export function adaptHistoryToAnthropicMessages(history: Message[]): AnthropicMessage[] {
   return history
+    .filter((message) => !message.toolCall)
     .map((message) => {
       const normalizedContent = message.content.trim() || (message.imageUri ? 'Shared an image.' : '');
 
@@ -111,54 +112,74 @@ export function adaptAnthropicResponse(responseText: string, now = new Date()): 
 
   // When expense action buttons are shown, suggestions are redundant — suppress them.
   if (message.actions?.length) {
-    return { message, suggestions: [] };
+    return { message, suggestions: [], toolCallMessages: [] };
   }
 
+  return { message, suggestions, toolCallMessages: [] };
+}
+
+// ── MCP Adapters (usadas quando FEATURES.MCP_ENABLED = true) ───────
+
+export function adaptHistoryToMcpEntries(history: Message[]): ChatHistoryEntry[] {
+  return history
+    .filter((message) => !message.toolCall)
+    .map((message) => {
+      const normalizedContent = message.content.trim() || (message.imageUri ? 'Shared an image.' : '');
+      if (!normalizedContent) return null;
+
+      return {
+        role: (message.sender === 'user' ? 'user' : 'assistant') as ChatHistoryEntry['role'],
+        content: normalizedContent,
+      };
+    })
+    .filter((entry): entry is ChatHistoryEntry => entry !== null);
+}
+
+export function adaptMcpChatResult(result: McpChatSendResult, now = new Date()): AiResponsePayload {
+  const hasExpenseOptions = result.actions.some((a) => a.type === 'expense_options');
+
+  // Criar mensagens de tool call (aparecem antes da resposta do AI)
+  const toolCallMessages: Message[] = (result.toolCalls ?? []).map((tc, index) => ({
+    id: `tool-${now.getTime()}-${index}`,
+    content: tc.name,
+    sender: 'ai' as const,
+    timestamp: new Date(now.getTime() + index),
+    toolCall: { name: tc.name, result: tc.result },
+  }));
+
+  const message: Message = {
+    id: `ai-${now.getTime() + (result.toolCalls?.length ?? 0)}`,
+    content: result.text,
+    sender: 'ai',
+    timestamp: now,
+    ...(hasExpenseOptions && { actions: getExpenseActions() }),
+  };
+
+  const suggestions: SuggestionChip[] = result.suggestions.map((s, index) => ({
+    id: `suggestion-${now.getTime()}-${index}`,
+    label: s.label,
+    prompt: s.prompt,
+  }));
+
+  return { message, suggestions, toolCallMessages };
+}
+
+export function adaptMcpBootstrapResult(
+  result: McpBootstrapResult,
+  now = new Date(),
+): { message: Message; suggestions: SuggestionChip[] } {
+  const message: Message = {
+    id: `ai-${now.getTime()}`,
+    content: result.messageText,
+    sender: 'ai',
+    timestamp: now,
+  };
+
+  const suggestions: SuggestionChip[] = result.suggestions.map((s, index) => ({
+    id: `suggestion-${now.getTime()}-${index}`,
+    label: s.label,
+    prompt: s.prompt,
+  }));
+
   return { message, suggestions };
-}
-
-function topProjects(entries: RecentTimesheetContext['today']['entries']): string {
-  const projectHours = entries.reduce<Record<string, number>>((acc, entry) => {
-    acc[entry.project] = (acc[entry.project] ?? 0) + entry.hours;
-    return acc;
-  }, {});
-
-  return Object.entries(projectHours)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([project, hours]) => `${project} (${hours}h)`)
-    .join(', ');
-}
-
-export function buildStartupTimesheetContextInjection(context: RecentTimesheetContext): string {
-  const missingPreview = context.missingWorkdays
-    .slice(0, 5)
-    .join(', ');
-
-  const ledgerLines = context.daySnapshots.map((snapshot) => {
-    const tasksPreview = snapshot.taskTitles.length > 0
-      ? snapshot.taskTitles.slice(0, 3).join('; ')
-      : 'none';
-    return `- ${snapshot.date} (${snapshot.weekdayName}): ${snapshot.entriesCount} entries, ${snapshot.totalHours}h, tasks: ${tasksPreview}.`;
-  });
-
-  const todayProjects = topProjects(context.today.entries);
-
-  return [
-    'STARTUP_TIMESHEET_CONTEXT',
-    `Range: ${context.rangeStart} to ${context.rangeEnd} (last 15 calendar days).`,
-    `Workdays in range: ${context.workdaysInRange}.`,
-    `Workdays with logs: ${context.loggedWorkdays}.`,
-    `Missing workdays (exclude weekends): ${context.missingWorkdays.length}.`,
-    context.missingWorkdays.length > 0
-      ? `Missing dates sample: ${missingPreview}${context.missingWorkdays.length > 5 ? ', ...' : ''}.`
-      : 'No missing workdays in this range.',
-    `Today (${context.today.date}) is workday: ${context.today.isWorkday ? 'yes' : 'no'}.`,
-    `Today entries: ${context.today.entriesCount}.`,
-    `Today total hours: ${context.today.totalHours}.`,
-    todayProjects ? `Today top projects: ${todayProjects}.` : 'Today top projects: none.',
-    'Weekend rule: Saturday and Sunday should not be treated as missing timesheet days.',
-    'Last-15-days task ledger:',
-    ...ledgerLines,
-  ].join('\n');
 }

@@ -1,3 +1,4 @@
+import { KpiSection } from '@/src/components/home/KpiSection';
 import { QuickActionsSection } from '@/src/components/home/QuickActionsSection';
 import { useChatLauncherStore } from '@/src/stores/useChatLauncherStore';
 import { useChatStore } from '@/src/stores/useChatStore';
@@ -49,6 +50,8 @@ export default function HomeScreen() {
       </View>
 
       <Text style={[styles.todayLabel, { color: colors.textMuted }]}>{today}</Text>
+
+      <KpiSection />
 
       <QuickActionsSection
         onNavigate={handleNavigate}

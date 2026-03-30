@@ -7,6 +7,7 @@ import { CheckIcon } from 'phosphor-react-native';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useLanguageStore, type SupportedLanguage } from '@/src/stores/useLanguageStore';
+import { NavBarEditor } from '@/src/components/settings/NavBarEditor';
 
 function ThemeCard({ themeId, isActive }: { themeId: ThemeId; isActive: boolean }) {
   const colors = useTheme();
@@ -121,6 +122,16 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>{t('navbar.sectionLabel')}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('navbar.title')}</Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+          {t('navbar.subtitle')}
+        </Text>
+      </View>
+
+      <NavBarEditor />
     </ScrollView>
   );
 }

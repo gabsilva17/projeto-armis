@@ -1,16 +1,17 @@
 import i18n from '../../i18n';
 import { MESSAGES_OF_DAY_COUNT } from '../../constants/chat.constants';
 import { getDefaultSuggestions } from '../../constants/suggestions';
+import { FEATURES, USER_NAME } from '../../constants/app.constants';
 import { callClaude, type AnthropicMessage } from '../api/anthropic';
+import { mcpChatSend, mcpBootstrap } from '../api/mcp';
 import {
   adaptAnthropicResponse,
-  adaptAnthropicTextToAiMessage,
   adaptHistoryToAnthropicMessages,
-  buildStartupTimesheetContextInjection,
-  createImagePromptContent,
+  adaptHistoryToMcpEntries,
+  adaptMcpBootstrapResult,
+  adaptMcpChatResult,
 } from '../adapters/chatAdapter';
 import type { AiResponsePayload, Message, SuggestionChip } from '../../types/chat.types';
-import type { RecentTimesheetContext } from '../timesheets/timesheetsService';
 
 export function getDailyGreeting(userName: string): string {
   const hour = new Date().getHours();
@@ -33,12 +34,14 @@ export function getMessageOfDay(): string {
 
 export { getDefaultSuggestions };
 
+// ── Startup prompts (legacy Anthropic path) ─────────────────────────
+
 function getStartupMessagePrompt(): string {
-  return 'Start the conversation now. Use the provided startup timesheet context to mention today, highlight relevant missing workdays (excluding weekends), ask one clear confirmation question, and suggest a next action without executing anything.';
+  return 'Greet the user briefly and ask how you can help today. Keep it to 2-3 sentences.';
 }
 
 function getStartupSuggestionsPrompt(): string {
-  return `Generate exactly 4 clickable suggestion chips for the user based on STARTUP_TIMESHEET_CONTEXT.
+  return `Generate exactly 4 clickable suggestion chips covering common tasks: timesheets, expenses, planning, and general help.
 Return only valid JSON in this exact format:
 [
   {"label":"...","prompt":"..."},
@@ -48,9 +51,7 @@ Return only valid JSON in this exact format:
 ]
 Rules:
 - Keep labels short (2 to 5 words).
-- Prompts must be specific to the provided context.
-- Include at least one prompt about today and at least one about missing workdays.
-- Do not mention weekends as missing.
+- Prompts must be specific and actionable, covering different features (timesheets, expenses, projects, daily planning).
 - No markdown, no explanation, no extra keys.
 - Labels and prompts MUST be written in the user's preferred language (specified in the system prompt).`;
 }
@@ -66,18 +67,27 @@ function extractJsonArray(text: string): string {
   return candidate.slice(start, end + 1);
 }
 
-export async function generateStartupSuggestions(
-  context: RecentTimesheetContext,
-): Promise<SuggestionChip[]> {
-  const runtimeContext = buildStartupTimesheetContextInjection(context);
-  const messages: AnthropicMessage[] = [{ role: 'user', content: getStartupSuggestionsPrompt() }];
-  const responseText = await callClaude(messages, runtimeContext);
+// ── Startup (generates initial AI message + suggestions) ────────────
 
-  const parsed = JSON.parse(extractJsonArray(responseText)) as Array<
+export async function generateBootstrap(): Promise<{ message: Message; suggestions: SuggestionChip[] }> {
+  if (FEATURES.MCP_ENABLED) {
+    const result = await mcpBootstrap({ language: i18n.language, userName: USER_NAME });
+    return adaptMcpBootstrapResult(result);
+  }
+
+  // Legacy Anthropic path — two parallel calls
+  const [messageResponse, suggestionsResponse] = await Promise.all([
+    callClaude([{ role: 'user', content: getStartupMessagePrompt() }]),
+    callClaude([{ role: 'user', content: getStartupSuggestionsPrompt() }]),
+  ]);
+
+  const message = adaptAnthropicResponse(messageResponse).message;
+
+  const parsed = JSON.parse(extractJsonArray(suggestionsResponse)) as Array<
     Partial<Pick<SuggestionChip, 'label' | 'prompt'>>
   >;
 
-  const cleaned = parsed
+  const suggestions = parsed
     .filter((item) => typeof item.label === 'string' && typeof item.prompt === 'string')
     .slice(0, 4)
     .map((item, index) => ({
@@ -87,20 +97,11 @@ export async function generateStartupSuggestions(
     }))
     .filter((item) => item.label.length > 0 && item.prompt.length > 0);
 
-  if (cleaned.length < 3) {
+  if (suggestions.length < 3) {
     throw new Error('Insufficient valid startup suggestions returned by AI.');
   }
 
-  return cleaned;
-}
-
-export async function generateStartupMessage(
-  context: RecentTimesheetContext,
-): Promise<Message> {
-  const runtimeContext = buildStartupTimesheetContextInjection(context);
-  const messages: AnthropicMessage[] = [{ role: 'user', content: getStartupMessagePrompt() }];
-  const responseText = await callClaude(messages, runtimeContext);
-  return adaptAnthropicResponse(responseText).message;
+  return { message, suggestions };
 }
 
 export function getStartupFallbackMessage(now = new Date()): Message {
@@ -116,35 +117,30 @@ export function getStartupFallbackSuggestions(): SuggestionChip[] {
   return getDefaultSuggestions();
 }
 
-export async function sendMessageWithImage(
-  base64: string,
-  text: string,
-  history: Message[],
-  runtimeSystemContext?: string,
-): Promise<AiResponsePayload> {
-  const imageContent = createImagePromptContent(base64, text, i18n.t('chat:imageAnalysisPrompt'));
-
-  const anthropicMessages: AnthropicMessage[] = [
-    ...adaptHistoryToAnthropicMessages(history),
-    { role: 'user' as const, content: imageContent },
-  ];
-
-  const responseText = await callClaude(anthropicMessages, runtimeSystemContext);
-
-  return adaptAnthropicResponse(responseText);
-}
+// ── Chat messages ───────────────────────────────────────────────────
 
 export async function sendMessage(
   content: string,
   history: Message[],
-  runtimeSystemContext?: string,
 ): Promise<AiResponsePayload> {
+  if (FEATURES.MCP_ENABLED) {
+    const messages = adaptHistoryToMcpEntries(history);
+    messages.push({ role: 'user', content });
+    const result = await mcpChatSend({
+      messages,
+      language: i18n.language,
+      userName: USER_NAME,
+    });
+    return adaptMcpChatResult(result);
+  }
+
+  // Legacy Anthropic path
   const anthropicMessages: AnthropicMessage[] = [
     ...adaptHistoryToAnthropicMessages(history),
     { role: 'user', content },
   ];
 
-  const responseText = await callClaude(anthropicMessages, runtimeSystemContext);
+  const responseText = await callClaude(anthropicMessages);
 
   return adaptAnthropicResponse(responseText);
 }

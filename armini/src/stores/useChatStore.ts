@@ -2,17 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import {
-  generateStartupSuggestions,
-  generateStartupMessage,
+  generateBootstrap,
   getStartupFallbackSuggestions,
   getStartupFallbackMessage,
   sendMessage as sendMessageService,
-  sendMessageWithImage as sendMessageWithImageService,
 } from '../services/chat/chatService';
-import { buildStartupTimesheetContextInjection } from '../services/adapters/chatAdapter';
-import { buildRecentTimesheetContext } from '../services/timesheets/timesheetsService';
+import { adaptTimesheetEntry, type TimesheetEntryApi } from '../services/adapters/timesheetsAdapter';
 import { useTimesheetsStore } from './useTimesheetsStore';
 import type { Message, SuggestionChip } from '../types/chat.types';
+
 
 interface ChatStore {
   messages: Message[];
@@ -23,7 +21,6 @@ interface ChatStore {
   error: string | null;
   ensureSessionBootstrap: () => Promise<void>;
   sendMessage: (content: string) => Promise<boolean>;
-  sendMessageWithImage: (base64: string, uri: string, text: string) => Promise<boolean>;
   clearError: () => void;
   clearMessages: () => void;
 }
@@ -48,13 +45,7 @@ export const useChatStore = create<ChatStore>()(
         set({ isBootstrapping: true, isLoading: true, error: null });
 
         try {
-          await useTimesheetsStore.getState().load();
-          const entries = useTimesheetsStore.getState().allEntries;
-          const context = buildRecentTimesheetContext(entries, 15);
-          const [startupMessage, startupSuggestions] = await Promise.all([
-            generateStartupMessage(context),
-            generateStartupSuggestions(context),
-          ]);
+          const { message: startupMessage, suggestions: startupSuggestions } = await generateBootstrap();
 
           set((s) => ({
             messages: s.messages.length === 0 ? [startupMessage] : s.messages,
@@ -91,51 +82,20 @@ export const useChatStore = create<ChatStore>()(
         }));
 
         try {
-          await useTimesheetsStore.getState().load();
-          const entries = useTimesheetsStore.getState().allEntries;
-          const context = buildRecentTimesheetContext(entries, 15);
-          const runtimeSystemContext = buildStartupTimesheetContextInjection(context);
+          const { message: aiMessage, suggestions, toolCallMessages } = await sendMessageService(content, get().messages);
 
-          const { message: aiMessage, suggestions } = await sendMessageService(content, get().messages, runtimeSystemContext);
+          // Sincronizar entries criadas pelo AI com o store de timesheets
+          for (const tcMsg of toolCallMessages) {
+            if (tcMsg.toolCall?.name === 'createTimesheetEntry' && tcMsg.toolCall.result) {
+              try {
+                const apiEntry = JSON.parse(tcMsg.toolCall.result) as TimesheetEntryApi;
+                useTimesheetsStore.getState().addEntry(adaptTimesheetEntry(apiEntry));
+              } catch { /* resultado inválido — ignorar */ }
+            }
+          }
+
           set((s) => ({
-            messages: [...s.messages, aiMessage],
-            suggestions,
-            isLoading: false,
-          }));
-          return true;
-        } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : 'Failed to get a response. Please try again.';
-          set({ error: message, isLoading: false });
-          return false;
-        }
-      },
-
-      sendMessageWithImage: async (base64: string, uri: string, text: string) => {
-        const history = get().messages;
-        const userMessage: Message = {
-          id: `user-${Date.now()}`,
-          content: text,
-          imageUri: uri,
-          sender: 'user',
-          timestamp: new Date(),
-        };
-
-        set((s) => ({
-          messages: [...s.messages, userMessage],
-          isLoading: true,
-          hasBootstrappedSession: true,
-          error: null,
-        }));
-
-        try {
-          await useTimesheetsStore.getState().load();
-          const entries = useTimesheetsStore.getState().allEntries;
-          const context = buildRecentTimesheetContext(entries, 15);
-          const runtimeSystemContext = buildStartupTimesheetContextInjection(context);
-
-          const { message: aiMessage, suggestions } = await sendMessageWithImageService(base64, text, history, runtimeSystemContext);
-          set((s) => ({
-            messages: [...s.messages, aiMessage],
+            messages: [...s.messages, ...toolCallMessages, aiMessage],
             suggestions,
             isLoading: false,
           }));
@@ -165,7 +125,7 @@ export const useChatStore = create<ChatStore>()(
     {
       name: 'chat-store',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ messages: state.messages }),
+      partialize: (state) => ({ messages: state.messages, suggestions: state.suggestions }),
     },
   ),
 );
