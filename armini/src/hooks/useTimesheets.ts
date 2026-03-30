@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTimesheetsStore } from '@/src/stores/useTimesheetsStore';
 import type { DaySummary, MonthSummary, TimesheetEntry } from '@/src/types/timesheets';
 
@@ -48,6 +48,7 @@ export function useTimesheets(): UseTimesheetsReturn {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(getTodayDateKey);
+  const pendingSelectionRef = useRef<string | null>(null);
 
   const allEntries = useTimesheetsStore((s) => s.allEntries);
   const hasLoaded = useTimesheetsStore((s) => s.hasLoaded);
@@ -73,6 +74,11 @@ export function useTimesheets(): UseTimesheetsReturn {
   );
 
   useEffect(() => {
+    if (pendingSelectionRef.current) {
+      setSelectedDate(pendingSelectionRef.current);
+      pendingSelectionRef.current = null;
+      return;
+    }
     const now = new Date();
     const isCurrentMonth = currentYear === now.getFullYear() && currentMonth === now.getMonth();
     setSelectedDate(isCurrentMonth ? toDateKey(now.getFullYear(), now.getMonth(), now.getDate()) : null);
@@ -99,8 +105,18 @@ export function useTimesheets(): UseTimesheetsReturn {
   }, []);
 
   const selectDay = useCallback((date: string) => {
-    setSelectedDate((prev) => (prev === date ? null : date));
-  }, []);
+    const [y, m] = date.split('-').map(Number);
+    const targetYear = y;
+    const targetMonth = m - 1;
+
+    if (targetYear !== currentYear || targetMonth !== currentMonth) {
+      pendingSelectionRef.current = date;
+      setCurrentYear(targetYear);
+      setCurrentMonth(targetMonth);
+    } else {
+      setSelectedDate((prev) => (prev === date ? null : date));
+    }
+  }, [currentYear, currentMonth]);
 
   const clearSelection = useCallback(() => setSelectedDate(null), []);
 

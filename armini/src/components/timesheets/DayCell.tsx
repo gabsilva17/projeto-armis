@@ -13,12 +13,23 @@ interface DayCellProps {
   daySummary: DaySummary | undefined;
   isSelected: boolean;
   onPress: (date: string) => void;
+  adjacentDay?: number;
+  adjacentDateKey?: string;
 }
 
-export const DayCell = memo(function DayCell({ day, year, month, daySummary, isSelected, onPress }: DayCellProps) {
+export const DayCell = memo(function DayCell({ day, year, month, daySummary, isSelected, onPress, adjacentDay, adjacentDateKey }: DayCellProps) {
   const colors = useTheme();
 
-  if (day === null) return <View style={styles.dayCell} />;
+  if (day === null) {
+    if (adjacentDay != null && adjacentDateKey != null) {
+      return (
+        <TouchableOpacity style={styles.dayCell} onPress={() => onPress(adjacentDateKey)} activeOpacity={0.75}>
+          <Text style={[styles.dayNumber, { color: colors.gray300 }]}>{adjacentDay}</Text>
+        </TouchableOpacity>
+      );
+    }
+    return <View style={styles.dayCell} />;
+  }
 
   const weekend = isWeekend(year, month, day);
   const today = isToday(year, month, day);

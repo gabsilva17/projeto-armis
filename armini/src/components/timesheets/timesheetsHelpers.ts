@@ -24,6 +24,27 @@ export function buildCalendarGrid(year: number, month: number): (number | null)[
   return cells;
 }
 
+export function getAdjacentDays(year: number, month: number) {
+  const firstDay = new Date(year, month, 1).getDay();
+  const offset = (firstDay + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  const leading: number[] = [];
+  for (let i = offset - 1; i >= 0; i--) {
+    leading.push(daysInPrevMonth - i);
+  }
+
+  const totalCells = offset + daysInMonth;
+  const trailingCount = (7 - (totalCells % 7)) % 7;
+  const trailing: number[] = [];
+  for (let d = 1; d <= trailingCount; d++) {
+    trailing.push(d);
+  }
+
+  return { leading, trailing };
+}
+
 export function isToday(year: number, month: number, day: number): boolean {
   const t = new Date();
   return t.getFullYear() === year && t.getMonth() === month && t.getDate() === day;

@@ -1,14 +1,14 @@
 import { useTheme } from '@/src/theme';
 import { Spacing, Typography } from '@/src/theme';
 import type { MonthSummary } from '@/src/types/timesheets';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 import { DayCell } from './DayCell';
 import { WeekStrip } from './WeekStrip';
 import { useTranslation } from 'react-i18next';
 import { DAY_LABEL_KEYS } from './timesheetsConstants';
-import { toDateKey } from './timesheetsHelpers';
+import { getAdjacentDays, toDateKey } from './timesheetsHelpers';
 import type { ViewStyle } from 'react-native';
 
 interface CalendarGridProps {
@@ -48,6 +48,30 @@ export const CalendarGrid = memo(function CalendarGrid({
 }: CalendarGridProps) {
   const colors = useTheme();
   const { t } = useTranslation('timesheets');
+
+  const adjacentCells = useMemo(() => {
+    const { leading, trailing } = getAdjacentDays(currentYear, currentMonth);
+    const pM = currentMonth === 0 ? 11 : currentMonth - 1;
+    const pY = currentMonth === 0 ? currentYear - 1 : currentYear;
+    const nM = currentMonth === 11 ? 0 : currentMonth + 1;
+    const nY = currentMonth === 11 ? currentYear + 1 : currentYear;
+    const totalCells = cells.length;
+
+    return cells.map((day, idx) => {
+      if (day !== null) return undefined;
+      if (idx < leading.length) {
+        const d = leading[idx];
+        return { day: d, dateKey: toDateKey(pY, pM, d) };
+      }
+      const ti = idx - (totalCells - trailing.length);
+      if (ti >= 0 && ti < trailing.length) {
+        const d = trailing[ti];
+        return { day: d, dateKey: toDateKey(nY, nM, d) };
+      }
+      return undefined;
+    });
+  }, [cells, currentYear, currentMonth]);
+
   return (
     <>
       {isLoading ? (
@@ -82,6 +106,8 @@ export const CalendarGrid = memo(function CalendarGrid({
                   day={day}
                   year={currentYear}
                   month={currentMonth}
+                  adjacentDay={adjacentCells[idx]?.day}
+                  adjacentDateKey={adjacentCells[idx]?.dateKey}
                   daySummary={
                     day !== null
                       ? monthData?.days[toDateKey(currentYear, currentMonth, day)]

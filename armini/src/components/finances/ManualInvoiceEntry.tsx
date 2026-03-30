@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   buttonRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: Spacing[3],
   },
   entriesSection: {
