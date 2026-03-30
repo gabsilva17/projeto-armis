@@ -1,7 +1,6 @@
 import { Spacing } from '@/src/theme';
 import { useTheme } from '@/src/theme';
-import { ClockIcon, CurrencyDollarIcon, DotsThreeCircleIcon, HouseIcon, type Icon } from 'phosphor-react-native';
-import { usePathname, useRouter, type Href } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -13,20 +12,8 @@ import Animated, {
   type AnimatedStyle,
 } from 'react-native-reanimated';
 import type { ViewStyle } from 'react-native';
-
-interface NavItem {
-  IconComponent: Icon;
-  href: Href;
-  route: string;
-  labelKey: string;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { IconComponent: HouseIcon, href: '/(main)/home' as Href, route: '/home', labelKey: 'nav.home' },
-  { IconComponent: CurrencyDollarIcon, href: '/(main)/finances' as Href, route: '/finances', labelKey: 'nav.finances' },
-  { IconComponent: ClockIcon, href: '/(main)/timesheets' as Href, route: '/timesheets', labelKey: 'nav.timesheets' },
-  { IconComponent: DotsThreeCircleIcon, href: '/(main)/more' as Href, route: '/more', labelKey: 'nav.more' },
-];
+import { useNavBarStore } from '@/src/stores/useNavBarStore';
+import { NAV_TAB_REGISTRY, FIXED_FIRST_TAB, FIXED_LAST_TAB } from '@/src/constants/navigation.constants';
 
 const ITEM_WIDTH = 80;
 export const BOTTOM_NAV_HEIGHT = 58;
@@ -42,12 +29,19 @@ export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const { middleTabs } = useNavBarStore();
 
-  const slotWidth = screenWidth / NAV_ITEMS.length;
+  const navItems = useMemo(() => [
+    NAV_TAB_REGISTRY[FIXED_FIRST_TAB],
+    ...middleTabs.map(id => NAV_TAB_REGISTRY[id]).filter(Boolean),
+    NAV_TAB_REGISTRY[FIXED_LAST_TAB],
+  ], [middleTabs]);
+
+  const slotWidth = screenWidth / navItems.length;
 
   const activeIndex = useMemo(
-    () => NAV_ITEMS.findIndex((item) => pathname.includes(item.route)),
-    [pathname],
+    () => navItems.findIndex((item) => pathname.includes(item.route)),
+    [pathname, navItems],
   );
   const highlightX = useSharedValue(0);
 
@@ -72,7 +66,7 @@ export function BottomNavBar({ animatedStyle }: BottomNavBarProps) {
         {/* Sliding highlight */}
         <Animated.View style={[styles.pillHighlight, highlightStyle, { backgroundColor: colors.gray100 }]} />
 
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname.includes(item.route);
           return (
             <TouchableOpacity

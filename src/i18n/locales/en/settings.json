@@ -36,5 +36,18 @@
       "label": "Português",
       "description": "Portuguese"
     }
+  },
+  "navbar": {
+    "sectionLabel": "NAVIGATION",
+    "title": "Navigation Bar",
+    "subtitle": "Choose which pages appear in the bottom bar and their order. Home and More are always visible.",
+    "required": "Required",
+    "available": "AVAILABLE PAGES",
+    "maxReached": "Maximum of {{max}} tabs reached.",
+    "add": "Add",
+    "remove": "Remove",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "reset": "Reset to default"
   }
 }

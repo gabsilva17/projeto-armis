@@ -1,10 +1,11 @@
 import { Spacing, Typography, useTheme } from '@/src/theme';
 import * as Clipboard from 'expo-clipboard';
-import { CopyIcon } from 'phosphor-react-native';
+import { CopyIcon, WrenchIcon } from 'phosphor-react-native';
 import React, { useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Markdown from 'react-native-markdown-display';
+import { useTranslation } from 'react-i18next';
 import { ExpenseActionButtons } from './ExpenseActionButtons';
 import type { Message, ExpenseActionType } from '@/src/types/chat.types';
 
@@ -15,6 +16,7 @@ interface ChatMessageProps {
 
 export const ChatMessage = React.memo(function ChatMessage({ message, onExpenseAction }: ChatMessageProps) {
   const colors = useTheme();
+  const { t } = useTranslation('chat');
   const isUser = message.sender === 'user';
   const [isSelectionModalVisible, setIsSelectionModalVisible] = useState(false);
 
@@ -162,6 +164,18 @@ export const ChatMessage = React.memo(function ChatMessage({ message, onExpenseA
     [],
   );
 
+  if (message.toolCall) {
+    const toolLabel = t(`toolNames.${message.toolCall.name}`, { defaultValue: message.toolCall.name });
+    return (
+      <Animated.View entering={FadeInDown.duration(180)} style={styles.containerToolCall}>
+        <View style={[styles.toolCallRow, { backgroundColor: colors.gray100, borderColor: colors.gray200 }]}>
+          <WrenchIcon size={14} color={colors.textSecondary} weight="fill" />
+          <Text style={[styles.toolCallText, { color: colors.textSecondary }]}>{toolLabel}</Text>
+        </View>
+      </Animated.View>
+    );
+  }
+
   if (isUser) {
     return (
       <Animated.View entering={FadeInDown.duration(200).springify()} style={styles.containerUser}>
@@ -243,6 +257,25 @@ export const ChatMessage = React.memo(function ChatMessage({ message, onExpenseA
 });
 
 const styles = StyleSheet.create({
+  containerToolCall: {
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[1],
+  },
+  toolCallRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    columnGap: Spacing[2],
+    paddingHorizontal: Spacing[3],
+    paddingVertical: Spacing[2],
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  toolCallText: {
+    fontSize: Typography.size.sm,
+    fontFamily: Typography.fontFamily.medium,
+    lineHeight: Typography.size.sm * Typography.lineHeight.normal,
+  },
   containerUser: {
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[1],

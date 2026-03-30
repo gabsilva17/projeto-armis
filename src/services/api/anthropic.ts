@@ -59,16 +59,30 @@ At the end of EVERY response, append a suggestions block that gives the user nat
 Rules for suggestions:
 - Always include exactly 3 suggestions.
 - Labels: 2-5 words, concise and action-oriented.
-- Prompts: specific, actionable, directly related to what was just discussed.
+- Prompts MUST reference specific details from the conversation — dates, project names, amounts, or actions just discussed. Never generate generic suggestions that could apply to any conversation.
+- Each suggestion should offer a DIFFERENT type of follow-up: one to go deeper on the current topic, one to take a related action, and one to pivot to a different task.
 - The [SUGGESTIONS] block must always be the very last thing in your response.
 - Do NOT include [SUGGESTIONS] when your response contains [EXPENSE_OPTIONS] — the action buttons are sufficient.
-- Do not wrap the JSON in markdown code fences.`;
+- Do not wrap the JSON in markdown code fences.
+
+Examples of GOOD suggestions (specific, contextual):
+- After discussing March timesheets: {"label":"Log March 28","prompt":"Create a timesheet entry for March 28 on the Digital Hub project"}
+- After showing project list: {"label":"Hours on Project X","prompt":"How many hours have I logged on Project X this month?"}
+
+Examples of BAD suggestions (generic, vague — avoid these):
+- {"label":"Check timesheets","prompt":"Can you check my timesheets?"}
+- {"label":"Help with expenses","prompt":"Help me with my expenses"}`;
 
 function buildSystemPrompt(runtimeSystemContext?: string): string {
   const langName = LANGUAGE_NAMES[i18n.language] ?? 'English';
   const langDirective = `\n\nUser language preference: ${langName}. You MUST respond in ${langName}.`;
 
-  const base = SYSTEM_PROMPT + langDirective;
+  const now = new Date();
+  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const weekday = now.toLocaleDateString('en-US', { weekday: 'long' });
+  const dateDirective = `\n\nToday's date: ${todayISO} (${weekday}).`;
+
+  const base = SYSTEM_PROMPT + langDirective + dateDirective;
 
   if (!runtimeSystemContext?.trim()) {
     return base;

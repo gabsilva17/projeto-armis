@@ -9,6 +9,11 @@ export interface MessageAction {
   actionType: ExpenseActionType;
 }
 
+export interface ToolCallInfo {
+  name: string;
+  result?: string;
+}
+
 export interface Message {
   id: string;
   content: string;
@@ -16,6 +21,7 @@ export interface Message {
   sender: Sender;
   timestamp: Date;
   actions?: MessageAction[];
+  toolCall?: ToolCallInfo;
 }
 
 export interface SuggestionChip {
@@ -27,6 +33,7 @@ export interface SuggestionChip {
 export interface AiResponsePayload {
   message: Message;
   suggestions: SuggestionChip[];
+  toolCallMessages: Message[];
 }
 
 export interface ChatState {

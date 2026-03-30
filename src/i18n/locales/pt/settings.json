@@ -36,5 +36,18 @@
       "label": "Português",
       "description": "Português"
     }
+  },
+  "navbar": {
+    "sectionLabel": "NAVEGAÇÃO",
+    "title": "Barra de Navegação",
+    "subtitle": "Escolha que páginas aparecem na barra inferior e a sua ordem. Início e Mais estão sempre visíveis.",
+    "required": "Obrigatório",
+    "available": "PÁGINAS DISPONÍVEIS",
+    "maxReached": "Máximo de {{max}} separadores atingido.",
+    "add": "Adicionar",
+    "remove": "Remover",
+    "moveUp": "Mover para cima",
+    "moveDown": "Mover para baixo",
+    "reset": "Repor predefinições"
   }
 }

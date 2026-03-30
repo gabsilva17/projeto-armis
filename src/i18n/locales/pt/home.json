@@ -19,6 +19,21 @@
     "defaultArminiTitle": "Armini",
     "defaultArminiDesc": "Abrir o assistente de chat"
   },
+  "kpi": {
+    "sectionTitle": "Resumo Mensal",
+    "hoursToInput": "Horas por inputar",
+    "hoursToInputToday": "hoje",
+    "accumulated": "Acumulado",
+    "accumulatedMonth": "este mês",
+    "vacations": "Férias",
+    "vacationsDays": "dias restantes",
+    "mapStatus": "Mapa Mensal",
+    "mapStatuses": {
+      "open": "Em aberto",
+      "submitted": "Submetido",
+      "approved": "Aprovado"
+    }
+  },
   "quickActionForm": {
     "newTitle": "Nova Ação Rápida",
     "editTitle": "Editar Ação Rápida",

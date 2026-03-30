@@ -24,7 +24,6 @@ export default function ArminiChatScreen() {
     error,
     ensureSessionBootstrap,
     sendMessage,
-    sendMessageWithImage,
     clearMessages,
     clearError,
   } = useChatStore();
@@ -89,7 +88,6 @@ export default function ArminiChatScreen() {
           value={composerText}
           onChangeText={setComposerText}
           onSend={sendMessage}
-          onSendImage={sendMessageWithImage}
           disabled={isLoading}
         />
       </View>

@@ -5,13 +5,14 @@ import { Spacing, useTheme } from '@/src/theme';
 import { useChatStore } from '@/src/stores/useChatStore';
 import { useChatAnimation } from '@/src/hooks/useChatAnimation';
 import { getChatGreeting } from '@/src/services/chat/chatService';
-import { DotsThreeVerticalIcon, XIcon } from 'phosphor-react-native';
+import { CaretDownIcon, DotsThreeVerticalIcon, WarningCircleIcon, XIcon } from 'phosphor-react-native';
 import { ROUTES } from '@/src/constants/app.constants';
 import { useFinancesStore } from '@/src/stores/useFinancesStore';
 import { useRouter } from 'expo-router';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  LayoutAnimation,
   Modal,
   StyleSheet,
   Text,
@@ -40,7 +41,6 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
     error,
     ensureSessionBootstrap,
     sendMessage,
-    sendMessageWithImage,
     clearMessages,
     clearError,
   } = useChatStore();
@@ -48,6 +48,16 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
   const chatGreeting = useMemo(() => getChatGreeting(), []);
   const [menuOpen, setMenuOpen] = useState(false);
   const [composerText, setComposerText] = useState('');
+  const [errorExpanded, setErrorExpanded] = useState(false);
+  const prevError = useRef(error);
+
+  // Colapsar automaticamente quando surge um novo erro
+  useEffect(() => {
+    if (error && error !== prevError.current) {
+      setErrorExpanded(false);
+    }
+    prevError.current = error;
+  }, [error]);
 
   const { keyboardHeight } = useKeyboard();
   const bottomInset = useSharedValue(insets.bottom);
@@ -166,11 +176,41 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
           {/* Body */}
           <View style={styles.body}>
             {error ? (
-              <View style={[styles.errorBanner, { backgroundColor: colors.surface, borderColor: colors.error }]}> 
-                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
-                <TouchableOpacity onPress={clearError} accessibilityRole="button" accessibilityLabel="Dismiss chat error">
-                  <Text style={[styles.errorDismiss, { color: colors.error }]}>Dismiss</Text>
+              <View style={[styles.errorBanner, { backgroundColor: colors.surface, borderColor: colors.error }]}>
+                <TouchableOpacity
+                  style={styles.errorHeader}
+                  onPress={() => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setErrorExpanded((v) => !v);
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={errorExpanded ? 'Collapse error details' : 'Expand error details'}
+                >
+                  <WarningCircleIcon size={16} color={colors.error} weight="fill" />
+                  <Text style={[styles.errorTitle, { color: colors.error }]} numberOfLines={1}>
+                    {error.length > 60 ? error.slice(0, 57) + '...' : error}
+                  </Text>
+                  <View style={[styles.errorCaret, errorExpanded && styles.errorCaretExpanded]}>
+                    <CaretDownIcon size={14} color={colors.error} weight="bold" />
+                  </View>
                 </TouchableOpacity>
+
+                {errorExpanded && (
+                  <View style={[styles.errorDetails, { borderTopColor: colors.error }]}>
+                    <Text style={[styles.errorDetailText, { color: colors.textSecondary }]} selectable>
+                      {error}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={clearError}
+                      style={[styles.errorDismissButton, { borderColor: colors.error }]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Dismiss chat error"
+                    >
+                      <Text style={[styles.errorDismissText, { color: colors.error }]}>Dismiss</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             ) : null}
 
@@ -187,7 +227,6 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
               value={composerText}
               onChangeText={setComposerText}
               onSend={sendMessage}
-              onSendImage={sendMessageWithImage}
               disabled={isLoading}
             />
             <ReAnimated.View style={spacerStyle} />
@@ -237,20 +276,47 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing[3],
     marginTop: Spacing[2],
     marginBottom: Spacing[1],
-    paddingVertical: Spacing[2],
-    paddingHorizontal: Spacing[3],
     borderWidth: 1,
     borderRadius: 10,
+    overflow: 'hidden',
+  },
+  errorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingVertical: Spacing[2],
+    paddingHorizontal: Spacing[3],
     gap: Spacing[2],
   },
-  errorText: {
+  errorTitle: {
     flex: 1,
     fontSize: 13,
+    fontWeight: '500',
   },
-  errorDismiss: {
+  errorCaret: {
+    transform: [{ rotate: '0deg' }],
+  },
+  errorCaretExpanded: {
+    transform: [{ rotate: '180deg' }],
+  },
+  errorDetails: {
+    paddingHorizontal: Spacing[3],
+    paddingTop: Spacing[2],
+    paddingBottom: Spacing[3],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: Spacing[3],
+  },
+  errorDetailText: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  errorDismissButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: Spacing[1],
+    paddingHorizontal: Spacing[3],
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  errorDismissText: {
     fontSize: 12,
     fontWeight: '600',
   },

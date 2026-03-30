@@ -44,5 +44,13 @@
   "expenseActions": {
     "chat": "Inserir por chat",
     "photo": "Enviar foto"
+  },
+  "toolNames": {
+    "getTimesheets": "A consultar timesheets",
+    "createTimesheetEntry": "A criar entrada de timesheet",
+    "getExpenses": "A consultar despesas",
+    "submitExpense": "A submeter despesa",
+    "getProjects": "A consultar projetos",
+    "getEmployeeInfo": "A consultar perfil"
   }
 }

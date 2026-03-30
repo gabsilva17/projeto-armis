@@ -88,7 +88,7 @@ Estágio curricular LEI-ISEP, fevereiro a julho 2026.
 Use cases principais:
 - Gestão de timesheets (registo, edição, consulta de horas)
 - Submissão de faturas de despesas (incluindo via fotografia com extração automática de dados)
-- AI Companion — chat contextual via MCP, integrado com servidor desenvolvido por colega da FEUP
+- AI Companion — chat contextual via MCP server próprio (`mcp-server/`), provider-agnostic (Anthropic/OpenAI)
 
 ## Stack
 - React Native + TypeScript (strict mode)
@@ -100,7 +100,8 @@ Use cases principais:
 - `@react-native-community/datetimepicker` para seleção nativa de data nos formulários
 - **i18next** + `react-i18next` + `expo-localization` para internacionalização (EN/PT)
 - API backend: REST .NET Core já existente do Digital Hub
-- LLM: Claude Haiku (`claude-haiku-4-5-20251001`) via chamada HTTP direta à Anthropic API (POC)
+- LLM: Claude Haiku (`claude-haiku-4-5-20251001`) via chamada HTTP direta à Anthropic API (POC/legacy path)
+- MCP Server (`mcp-server/`): Node.js + TypeScript + Express, provider-agnostic (Anthropic/OpenAI), JSON-RPC 2.0
 
 ## Estrutura real do projeto
 ```
@@ -119,6 +120,7 @@ src/
     finances/                 ← ManualInvoiceEntry (modal) para submissão manual
     home/                     ← QuickActionsSection, QuickActionFormModal
     navigation/               ← TopBar, BottomNavBar, ProfileSidebar
+    settings/                 ← NavBarEditor (customização dos tabs da bottom bar)
     timesheets/               ← CalendarGrid, DayCell, EntryFormModal, WeekStrip, etc.
     ui/                       ← ActionListRow, Button, Card, DateField, Divider, EmptyState, SelectField, TextField, etc.
   contexts/
@@ -135,8 +137,8 @@ src/
   services/
     adapters/                 ← Adaptadores API->domínio por feature (chat, timesheets)
     api/
-      anthropic.ts            ← Claude HTTP client (fetch direto)
-      mcp.ts                  ← Placeholder MCP (não implementado)
+      anthropic.ts            ← Claude HTTP client direto (legacy path, quando MCP_ENABLED=false)
+      mcp.ts                  ← MCP client: mcpCall + wrappers tipados (mcpChatSend, mcpBootstrap, mcpScan)
     chat/chatService.ts
     timesheets/timesheetsService.ts
   i18n/
@@ -149,6 +151,7 @@ src/
     useChatStore.ts           ← Mensagens + persistência AsyncStorage
     useFinancesStore.ts
     useLanguageStore.ts       ← Idioma do utilizador (EN/PT) + persistência AsyncStorage
+    useNavBarStore.ts         ← Tabs da bottom bar (ordem + seleção) + persistência AsyncStorage
     useSidebarStore.ts
     useTimesheetsStore.ts
   theme/
@@ -159,6 +162,7 @@ src/
     index.ts
   types/
     api.types.ts, chat.types.ts, finances.types.ts,
+    mcp.types.ts,                 ← DTOs do contrato MCP (ChatHistoryEntry, McpChatSendResult, etc.)
     navigation.types.ts, timesheets.ts, index.ts
   constants/
     app.constants.ts          ← APP_NAME, USER_NAME, FEATURES, ROUTES, SIDEBAR_WIDTH
@@ -166,8 +170,9 @@ src/
     formOptions.constants.ts  ← Opções reutilizáveis de formulários (finances)
     ui.constants.ts           ← HIT_SLOP e valores de interação reutilizáveis
     image.constants.ts        ← Config partilhada de image picker/upload
-    llm.constants.ts          ← Endpoint/model/version/token limits do cliente LLM
+    llm.constants.ts          ← ANTHROPIC_CONFIG (legacy) + MCP_CONFIG + MCP_METHODS
     chat.constants.ts         ← Textos/strings reutilizáveis do domínio de chat
+    navigation.constants.ts   ← NavTabRegistry, IDs fixos/opcionais, MAX_NAV_TABS
     quickActions.constants.ts ← Opções e limites de quick actions
     suggestions.ts            ← Chat suggestions por defeito
 ```
@@ -183,8 +188,10 @@ Cada store é um ficheiro em `src/stores/`, hook-based, sem Redux/Context pesado
 | `useSidebarStore` | `isOpen` | Não |
 | `useQuickActionsStore` | `actions[]` (QuickAction) | AsyncStorage |
 | `useLanguageStore` | `language` ('en' \| 'pt') | AsyncStorage |
+| `useNavBarStore` | `middleTabs[]` (NavTabId) | AsyncStorage |
 
 `useTimesheetsStore` expõe `getMonthData(year, month)` que deriva `MonthSummary` do estado.
+`useNavBarStore` gere quais tabs opcionais aparecem na bottom bar e a sua ordem. Home e More são fixos (primeiro e último). Máximo de 5 tabs no total.
 
 ## Internacionalização (i18n)
 
@@ -229,8 +236,10 @@ Todas as chamadas à API ficam em `src/services/`, nunca na UI nem nos stores di
 - Contratos externos devem ser tipados no adapter (ex: `*Api`, `*ApiResponse`) e normalizados no mesmo ficheiro.
 - Quando o backend mudar o payload, ajustar primeiro o adapter do domínio; evitar mexer em componentes/stores sem necessidade.
 
-- `anthropic.ts` — cliente HTTP para `https://api.anthropic.com/v1/messages`, chave via `process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY`
-- `chatService.ts` — `sendMessage(content, history)`, saudações baseadas na hora
+- `anthropic.ts` — cliente HTTP direto para Anthropic API (legacy path, usado quando `MCP_ENABLED=false`)
+- `mcp.ts` — MCP client com `mcpCall()` genérico + wrappers tipados (`mcpChatSend`, `mcpBootstrap`, `mcpScan`)
+- `chatService.ts` — `sendMessage(content, history)`, saudações. Usa `FEATURES.MCP_ENABLED` para escolher entre MCP e Anthropic direto
+- `expenseScanService.ts` — scan de recibos. Mesmo padrão de feature flag MCP/legacy
 - `timesheetsService.ts` — dados mock; switch via `FEATURES.BACKEND_CONNECTED`
 
 ## Sistema de tema
@@ -284,9 +293,51 @@ Shadows.sm  // Platform.select iOS/Android
 ## Feature flags
 ```ts
 // src/constants/app.constants.ts
-export const FEATURES = { BACKEND_CONNECTED: false };
+export const FEATURES = {
+  BACKEND_CONNECTED: false,
+  MCP_ENABLED: false,
+};
 ```
-Quando `false`, `timesheetsService` devolve dados mock. Ligar quando o backend estiver pronto.
+- `BACKEND_CONNECTED`: quando `false`, `timesheetsService` devolve dados mock. Ligar quando o backend estiver pronto.
+- `MCP_ENABLED`: quando `false`, o chat usa chamadas diretas ao Anthropic API (legacy). Quando `true`, todas as chamadas LLM passam pelo MCP server. Ligar quando o MCP server estiver a correr.
+
+## MCP Server (`mcp-server/`)
+
+Servidor MCP próprio que orquestra chamadas LLM de forma provider-agnostic. Vive como pasta irmã do projeto React Native.
+
+### Arquitetura
+```
+mcp-server/src/
+  config/         ← env validation (zod) + constants
+  providers/      ← LLMProvider interface + AnthropicProvider + OpenAIProvider + factory
+  orchestrator/   ← chatOrchestrator (handleChat/Bootstrap/Scan) + promptBuilder + responseParser
+  tools/          ← ToolRegistry + 6 tools fictícias (mock ARMIS API) + fixtures JSON
+  transport/      ← Express router com JSON-RPC 2.0 (POST /mcp)
+  utils/          ← logger + error helpers
+```
+
+### Métodos JSON-RPC
+| Método | Input | Output |
+|--------|-------|--------|
+| `chat/send` | `{ messages[], language, userName, imageData? }` | `{ text, suggestions[], actions[] }` |
+| `chat/bootstrap` | `{ language, userName }` | `{ messageText, suggestions[] }` |
+| `chat/scan` | `{ base64, mediaType }` | `{ expenseData }` |
+| `tools/list` | `{}` | `{ tools[] }` |
+| `tools/call` | `{ name, arguments }` | `{ content[] }` |
+
+### Provider swap
+`LLM_PROVIDER=anthropic|openai` no `.env` do server. O client não sabe qual provider está a ser usado.
+
+### Server swap (modularidade)
+O contrato cliente-servidor são os 3 métodos `chat/*`. Qualquer servidor que implemente estes métodos com JSON-RPC 2.0 em `/mcp` é drop-in replacement. Trocar server = mudar `EXPO_PUBLIC_MCP_URL`.
+
+### Tools fictícias (mock ARMIS API)
+`getTimesheets`, `createTimesheetEntry`, `getExpenses`, `submitExpense`, `getProjects`, `getEmployeeInfo` — leem de `fixtures/*.json`. Quando a API ARMIS real estiver disponível, substituir handler mock por HTTP call.
+
+### Comandos do server
+- `cd mcp-server && npm run dev` — dev mode com hot reload
+- `cd mcp-server && npm run typecheck` — verificação de tipos
+- `cd mcp-server && npm run build` — compilar para dist/
 
 ## Regras de código
 - **Nunca fazer assumptions.** Se houver qualquer dúvida sobre requisitos, design, comportamento esperado ou abordagem, perguntar ao utilizador antes de avançar. Preferir clarificar do que assumir.
@@ -313,20 +364,9 @@ Quando `false`, `timesheetsService` devolve dados mock. Ligar quando o backend e
 - O input de chat só deve limpar texto/imagem após sucesso da chamada; em erro deve preservar draft para retry manual.
 - Erros de chat devem ser visíveis no container com ação explícita de dismiss (evitar falhas silenciosas).
 
-## Código intencionalmente inativo
-
-O projeto contém código preservado a pedido explícito que não está a ser usado na UI atual. **Não remover** sem confirmar com o utilizador.
-
-| Ficheiro | O que está inativo | Motivo |
-|----------|--------------------|--------|
-| `src/components/chat/ChatInput.tsx` | Botão de attach de foto (PaperclipIcon + menu Camera/Gallery), lógica de `pendingImage`, `takePhoto`, `pickFromLibrary`, `handleClipPress`, `clipScale` | Feature ocultada temporariamente via `{false && (...)}` — a lógica pode ser reativada quando necessário |
-| `ChatBubbleContainer.tsx` | Prop `onSendImage` passada ao `ChatInput` | Dependente da feature acima |
-
----
-
 ## ⚠️ Restrições importantes
-- A API key do LLM está no bundle por ser POC — NUNCA para produção
-- Em produção, chamadas ao LLM têm de passar pelo servidor MCP, nunca pelo cliente
+- A API key do LLM está no bundle no path legacy — NUNCA para produção
+- Em produção, chamadas ao LLM têm de passar pelo MCP server (`MCP_ENABLED=true`), nunca pelo cliente direto
 - Não adicionar dependências nativas sem verificar compatibilidade com a versão atual do RN/Expo SDK
 - **Instalar pacotes Expo sempre com `npx expo install <pacote>`**, nunca com `npm install` — o `expo install` resolve automaticamente a versão compatível com o SDK do projeto e evita desalinhamentos de versão
 
@@ -334,3 +374,5 @@ O projeto contém código preservado a pedido explícito que não está a ser us
 - `npm start` — Metro bundler
 - `npm run android` / `npm run ios` — build e run
 - `npx tsc --noEmit` — verificação de tipos
+- `cd ../mcp-server && npm run dev` — MCP server em dev mode
+- `cd ../mcp-server && npm run typecheck` — typecheck do server
