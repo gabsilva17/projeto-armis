@@ -8,6 +8,33 @@ import { isToday, isWeekend, toDateKey } from './timesheetsHelpers';
 
 export const COMPACT_STRIP_HEIGHT = 80;
 
+function buildWeekAdjacentCells(week: (number | null)[], year: number, month: number) {
+  const firstRealIdx = week.findIndex(d => d !== null);
+  if (firstRealIdx === -1) return week.map(() => undefined);
+
+  let lastRealIdx = 6;
+  while (lastRealIdx >= 0 && week[lastRealIdx] === null) lastRealIdx--;
+
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const pM = month === 0 ? 11 : month - 1;
+  const pY = month === 0 ? year - 1 : year;
+  const nM = month === 11 ? 0 : month + 1;
+  const nY = month === 11 ? year + 1 : year;
+
+  return week.map((day, i) => {
+    if (day !== null) return undefined;
+    if (i < firstRealIdx) {
+      const d = daysInPrevMonth - (firstRealIdx - 1 - i);
+      return { day: d, dateKey: toDateKey(pY, pM, d) };
+    }
+    if (i > lastRealIdx) {
+      const d = i - lastRealIdx;
+      return { day: d, dateKey: toDateKey(nY, nM, d) };
+    }
+    return undefined;
+  });
+}
+
 interface WeekStripProps {
   week: (number | null)[];
   year: number;
@@ -21,6 +48,8 @@ export function WeekStrip({ week, year, month, monthData, selectedDate, onPress 
   const colors = useTheme();
   const { t } = useTranslation('timesheets');
 
+  const adjacentCells = buildWeekAdjacentCells(week, year, month);
+
   const maxHours = week.reduce<number>((max, day) => {
     if (day === null) return max;
     const h = monthData?.days[toDateKey(year, month, day)]?.totalHours ?? 0;
@@ -30,7 +59,25 @@ export function WeekStrip({ week, year, month, monthData, selectedDate, onPress 
   return (
     <View style={styles.strip}>
       {week.map((day, i) => {
-        if (day === null) return <View key={i} style={styles.cell} />;
+        if (day === null) {
+          const adj = adjacentCells[i];
+          if (adj) {
+            return (
+              <TouchableOpacity
+                key={i}
+                style={styles.cell}
+                onPress={() => onPress(adj.dateKey)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.dayLabel, { color: colors.gray300 }]}>
+                  {t(`days.${DAY_LABEL_KEYS[i]}`)}
+                </Text>
+                <Text style={[styles.dayNumber, { color: colors.gray300 }]}>{adj.day}</Text>
+              </TouchableOpacity>
+            );
+          }
+          return <View key={i} style={styles.cell} />;
+        }
 
         const dateKey = toDateKey(year, month, day);
         const daySummary = monthData?.days[dateKey];

@@ -1,18 +1,16 @@
-import { ANIMATION_DURATIONS, SPRING_CONFIGS } from '@/src/constants/animation.constants';
+import { ANIMATION_DURATIONS } from '@/src/constants/animation.constants';
+import { HIT_SLOP } from '@/src/constants/ui.constants';
 import { Spacing, Typography, useTheme } from '@/src/theme';
+import { X } from 'phosphor-react-native';
 import { useEffect, useRef } from 'react';
 import {
   Animated,
-  Dimensions,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export interface AlertButton {
   text: string;
@@ -34,28 +32,35 @@ interface AlertModalProps {
 
 export function AlertModal({ visible, config, onDismiss }: AlertModalProps) {
   const colors = useTheme();
-  const insets = useSafeAreaInsets();
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const slideY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const cardScale = useRef(new Animated.Value(0.9)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      slideY.setValue(SCREEN_HEIGHT);
+      cardScale.setValue(0.9);
+      cardOpacity.setValue(0);
       backdropOpacity.setValue(0);
+
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 1,
           duration: ANIMATION_DURATIONS.modalEnter,
           useNativeDriver: true,
         }),
-        Animated.spring(slideY, {
-          toValue: 0,
-          ...SPRING_CONFIGS.expand,
+        Animated.timing(cardScale, {
+          toValue: 1,
+          duration: ANIMATION_DURATIONS.modalEnter,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardOpacity, {
+          toValue: 1,
+          duration: ANIMATION_DURATIONS.modalEnter,
           useNativeDriver: true,
         }),
       ]).start();
     }
-  }, [visible, backdropOpacity, slideY]);
+  }, [visible, backdropOpacity, cardScale, cardOpacity]);
 
   const animateOut = (callback?: () => void) => {
     Animated.parallel([
@@ -64,9 +69,14 @@ export function AlertModal({ visible, config, onDismiss }: AlertModalProps) {
         duration: ANIMATION_DURATIONS.modalBackdropExit,
         useNativeDriver: true,
       }),
-      Animated.timing(slideY, {
-        toValue: SCREEN_HEIGHT,
-        duration: ANIMATION_DURATIONS.modalSlideExit,
+      Animated.timing(cardScale, {
+        toValue: 0.9,
+        duration: ANIMATION_DURATIONS.modalBackdropExit,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardOpacity, {
+        toValue: 0,
+        duration: ANIMATION_DURATIONS.modalBackdropExit,
         useNativeDriver: true,
       }),
     ]).start(() => callback?.());
@@ -74,13 +84,12 @@ export function AlertModal({ visible, config, onDismiss }: AlertModalProps) {
 
   const handleButtonPress = (button: AlertButton) => {
     animateOut(() => {
-      // Dismiss primeiro para limpar o estado antes de onPress potencialmente abrir outro alert
       onDismiss();
       button.onPress?.();
     });
   };
 
-  const handleBackdropPress = () => {
+  const handleClose = () => {
     const cancelBtn = config?.buttons?.find((b) => b.style === 'cancel');
     animateOut(() => {
       onDismiss();
@@ -91,80 +100,88 @@ export function AlertModal({ visible, config, onDismiss }: AlertModalProps) {
   if (!visible || !config) return null;
 
   const allButtons = config.buttons?.length ? config.buttons : [{ text: 'OK' }];
-  const cancelButton = allButtons.find((b) => b.style === 'cancel');
   const actionButtons = allButtons.filter((b) => b.style !== 'cancel');
+
+  // Primeiro botão de ação fica filled (preto), os restantes ficam outline
+  const primaryButton = actionButtons[0];
+  const secondaryButtons = actionButtons.slice(1);
 
   return (
     <Modal transparent visible statusBarTranslucent>
       <View style={styles.overlay}>
         <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={handleBackdropPress} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
         </Animated.View>
 
         <Animated.View
           style={[
-            styles.sheetContainer,
+            styles.card,
             {
-              paddingBottom: insets.bottom + Spacing[2],
-              transform: [{ translateY: slideY }],
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              opacity: cardOpacity,
+              transform: [{ scale: cardScale }],
             },
           ]}
         >
-          {/* Bloco principal */}
-          <View style={[styles.mainCard, { backgroundColor: colors.background }]}>
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.title, { color: colors.textPrimary }]}>{config.title}</Text>
-              {config.message ? (
-                <Text style={[styles.message, { color: colors.textSecondary }]}>{config.message}</Text>
-              ) : null}
-            </View>
+          {/* X no canto superior direito */}
+          <Pressable
+            style={styles.closeButton}
+            onPress={handleClose}
+            hitSlop={HIT_SLOP.md}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <X size={18} color={colors.textMuted} weight="bold" />
+          </Pressable>
 
-            {actionButtons.map((button, index) => {
-              const isDestructive = button.style === 'destructive';
-
-              return (
-                <Pressable
-                  key={`${button.text}-${index}`}
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    index < actionButtons.length - 1 && [styles.actionButtonBorder, { borderBottomColor: colors.border }],
-                    pressed && { backgroundColor: colors.surface },
-                  ]}
-                  onPress={() => handleButtonPress(button)}
-                  accessibilityRole="button"
-                  accessibilityLabel={button.text}
-                >
-                  <Text
-                    style={[
-                      styles.actionButtonText,
-                      { color: colors.textPrimary },
-                      isDestructive && { color: colors.error },
-                    ]}
-                  >
-                    {button.text}
-                  </Text>
-                </Pressable>
-              );
-            })}
+          {/* Conteúdo */}
+          <View style={styles.content}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{config.title}</Text>
+            {config.message ? (
+              <Text style={[styles.message, { color: colors.textSecondary }]}>{config.message}</Text>
+            ) : null}
           </View>
 
-          {/* Botão Cancel separado */}
-          {cancelButton ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.cancelCard,
-                { backgroundColor: colors.background },
-                pressed && { backgroundColor: colors.surface },
-              ]}
-              onPress={() => handleButtonPress(cancelButton)}
-              accessibilityRole="button"
-              accessibilityLabel={cancelButton.text}
-            >
-              <Text style={[styles.cancelText, { color: colors.textMuted }]}>
-                {cancelButton.text}
-              </Text>
-            </Pressable>
-          ) : null}
+          {/* Botões */}
+          <View style={styles.buttonRow}>
+            {secondaryButtons.map((button, index) => (
+              <Pressable
+                key={`${button.text}-${index}`}
+                style={({ pressed }) => [
+                  styles.button,
+                  styles.outlineButton,
+                  { borderColor: colors.textPrimary },
+                  pressed && { opacity: 0.6 },
+                ]}
+                onPress={() => handleButtonPress(button)}
+                accessibilityRole="button"
+                accessibilityLabel={button.text}
+              >
+                <Text style={[styles.outlineText, { color: colors.textPrimary }]}>
+                  {button.text}
+                </Text>
+              </Pressable>
+            ))}
+
+            {primaryButton ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.button,
+                  styles.filledButton,
+                  { backgroundColor: colors.textPrimary },
+                  pressed && { opacity: 0.8 },
+                ]}
+                onPress={() => handleButtonPress(primaryButton)}
+                accessibilityRole="button"
+                accessibilityLabel={primaryButton.text}
+              >
+                <Text style={[styles.filledText, { color: colors.textInverse }]}>
+                  {primaryButton.text}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -174,56 +191,67 @@ export function AlertModal({ visible, config, onDismiss }: AlertModalProps) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing[8],
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  sheetContainer: {
-    paddingHorizontal: Spacing[3],
-    gap: Spacing[2],
-  },
-  mainCard: {
+  card: {
+    width: '100%',
     borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
-  header: {
+  closeButton: {
+    position: 'absolute',
+    top: Spacing[4],
+    right: Spacing[4],
+    zIndex: 1,
+  },
+  content: {
     paddingHorizontal: Spacing[5],
     paddingTop: Spacing[5],
+    paddingRight: Spacing[10],
     paddingBottom: Spacing[4],
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: Spacing[1],
+    gap: Spacing[2],
   },
   title: {
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.bold,
-    textAlign: 'center',
+    fontSize: Typography.size.md,
+    fontFamily: Typography.fontFamily.semibold,
   },
   message: {
     fontSize: Typography.size.sm,
     fontFamily: Typography.fontFamily.regular,
-    textAlign: 'center',
     lineHeight: 19,
   },
-  actionButton: {
-    paddingVertical: Spacing[4],
+  buttonRow: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing[5],
+    paddingBottom: Spacing[5],
+    gap: Spacing[2],
+  },
+  button: {
+    flex: 1,
+    paddingVertical: Spacing[3],
+    paddingHorizontal: Spacing[3],
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionButtonBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  filledButton: {},
+  filledText: {
+    fontSize: Typography.size.sm,
+    fontFamily: Typography.fontFamily.semibold,
   },
-  actionButtonText: {
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.medium,
+  outlineButton: {
+    borderWidth: 1.5,
+    backgroundColor: 'transparent',
   },
-  cancelCard: {
-    borderRadius: 16,
-    paddingVertical: Spacing[4],
-    alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: Typography.size.base,
-    fontFamily: Typography.fontFamily.regular,
+  outlineText: {
+    fontSize: Typography.size.sm,
+    fontFamily: Typography.fontFamily.semibold,
   },
 });

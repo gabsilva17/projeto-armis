@@ -328,6 +328,7 @@ O projeto contém código preservado a pedido explícito que não está a ser us
 - A API key do LLM está no bundle por ser POC — NUNCA para produção
 - Em produção, chamadas ao LLM têm de passar pelo servidor MCP, nunca pelo cliente
 - Não adicionar dependências nativas sem verificar compatibilidade com a versão atual do RN/Expo SDK
+- **Instalar pacotes Expo sempre com `npx expo install <pacote>`**, nunca com `npm install` — o `expo install` resolve automaticamente a versão compatível com o SDK do projeto e evita desalinhamentos de versão
 
 ## Comandos
 - `npm start` — Metro bundler

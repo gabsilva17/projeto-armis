@@ -16,8 +16,8 @@ export function getStatusColor(status: TimesheetEntryStatus, colors: ThemeColors
 
 export const ALL_STATUSES: TimesheetEntryStatus[] = ['draft', 'pending', 'approved'];
 
-export const CELL_SIZE = 44;
-export const ROW_HEIGHT = CELL_SIZE + 4;
+export const CELL_SIZE = 50;
+export const ROW_HEIGHT = CELL_SIZE + 8;
 export const SWIPE_THRESHOLD = 60;
 
 export const EMPTY_INPUT: EntryInput = { project: '', task: '', hours: 8, status: 'draft' };
