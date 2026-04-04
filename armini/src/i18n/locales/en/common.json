@@ -11,8 +11,6 @@
   "edit": "Edit",
   "duplicate": "Duplicate",
   "retry": "Retry",
-  "dismiss": "Dismiss",
-  "back": "Back",
   "close": "Close",
   "loading": "Loading…",
   "error": {
@@ -22,21 +20,8 @@
   },
   "permission": {
     "required": "Permission required",
-    "camera": "Camera access is needed to take a photo.",
-    "photoLibrary": "Photo library access is needed.",
     "cameraReceipt": "Camera access is required to scan receipts."
   },
-  "imagePicker": {
-    "cancel": "Cancel",
-    "takePhoto": "Take Photo",
-    "chooseFromLibrary": "Choose from Library",
-    "choosePdf": "Choose PDF"
-  },
-  "camera": "Camera",
-  "gallery": "Gallery",
-  "couldNotOpenCamera": "Could not open camera.",
-  "couldNotOpenPhotoLibrary": "Could not open photo library.",
-  "removeImage": "Remove image",
   "sidebar": {
     "employee": "Employee · ARMIS",
     "account": "Account",

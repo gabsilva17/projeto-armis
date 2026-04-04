@@ -1,5 +1,4 @@
 {
-  "title": "Chat ARMINI",
   "chatGreeting": {
     "morning": "Como posso ajudar esta manhã?",
     "afternoon": "Como posso ajudar esta tarde?",
@@ -18,10 +17,8 @@
   "deleteChat": "Apagar chat",
   "chatOptions": "Opções de chat",
   "inputPlaceholder": "Conversar com ARMINI…",
-  "inputPlaceholderWithImage": "Adicionar legenda…",
   "sendMessage": "Enviar mensagem",
   "messageInput": "Campo de mensagem",
-  "dismissError": "Fechar erro de chat",
   "suggestions": {
     "reviewLast15Days": {
       "label": "Rever últimos 15 dias",
@@ -40,7 +37,6 @@
       "prompt": "Sugere o que devo registar para os dias úteis em falta, sem submeter nada."
     }
   },
-  "imageAnalysisPrompt": "Por favor analisa esta imagem e diz-me o que vês.",
   "expenseActions": {
     "chat": "Inserir por chat",
     "photo": "Enviar foto"

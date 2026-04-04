@@ -25,57 +25,12 @@ A secção relevante deve ser editada inline. Se não existir secção adequada,
 
 ## Padrão de animações — valores canónicos
 
-Todas as animações devem seguir estes valores para garantir consistência visual. **Nunca usar `.springify()` sem parâmetros** — os defaults do Reanimated são demasiado elásticos.
+Todos os valores canónicos (durations, easing, springs, press feedback) estão em `src/constants/animation.constants.ts` — single source of truth. **Nunca usar `.springify()` sem parâmetros** — os defaults do Reanimated são demasiado elásticos.
 
-### Easing (importar de `react-native-reanimated`)
-```ts
-const EASE_OUT = Easing.out(Easing.cubic); // entradas — começa rápido, desacelera
-const EASE_IN  = Easing.in(Easing.cubic);  // saídas — começa devagar, acelera
-```
-
-### Entering / Exiting (elementos que aparecem/desaparecem)
-```ts
-// Elemento surge (ex: menu, preview, modal)
-entering={FadeInUp.duration(200).easing(EASE_OUT)}
-
-// Elemento desaparece
-exiting={FadeOutDown.duration(160).easing(EASE_IN)}
-```
-- Entradas: **180–200 ms**, `EASE_OUT`
-- Saídas: **140–160 ms**, `EASE_IN` (saída ligeiramente mais rápida — mais snappy)
-
-### Springs (gesture-driven ou feedback de press)
-```ts
-// Expansão de ecrã (chat, profile panel)
-{ damping: 26, stiffness: 230, mass: 0.85 }
-
-// Colapso de calendário / transições de layout
-{ damping: 20, stiffness: 200, mass: 0.8 }
-```
-Estes valores produzem um spring quase criticamente amortecido (sem bounce visível).
-
-### Press feedback em botões
-```ts
-// Pressionar
-withTiming(0.82, { duration: 80,  easing: EASE_OUT })
-// Soltar
-withTiming(1,    { duration: 200, easing: EASE_OUT })
-```
-Usar `withTiming`, não `withSpring`, para press feedback — evita bounce indesejado.
-
-### Timings de show/hide (opacidade ou translate simples)
-```ts
-// Abrir
-withTiming(1, { duration: 180, easing: EASE_OUT })
-// Fechar
-withTiming(0, { duration: 160, easing: EASE_IN  })
-```
-
-### Transições de página (slide horizontal)
-```ts
-withTiming(±screenWidth, { duration: 220 }) // sair
-withTiming(0,            { duration: 220 }) // entrar
-```
+Princípios:
+- Entradas: **180–200 ms**, `EASE_OUT` / Saídas: **140–160 ms**, `EASE_IN` (mais snappy)
+- Springs quase criticamente amortecidos (sem bounce visível)
+- Press feedback com `withTiming`, nunca `withSpring`
 
 ---
 
@@ -100,81 +55,36 @@ Use cases principais:
 - `@react-native-community/datetimepicker` para seleção nativa de data nos formulários
 - **i18next** + `react-i18next` + `expo-localization` para internacionalização (EN/PT)
 - API backend: REST .NET Core já existente do Digital Hub
-- LLM: Claude Haiku (`claude-haiku-4-5-20251001`) via chamada HTTP direta à Anthropic API (POC/legacy path)
-- MCP Server (`mcp-server/`): Node.js + TypeScript + Express, provider-agnostic (Anthropic/OpenAI), JSON-RPC 2.0
+- MCP Server (`mcp-server/`): Node.js + TypeScript + Express, provider-agnostic (Anthropic/OpenAI), JSON-RPC 2.0 — todas as chamadas LLM passam pelo MCP server
 
-## Estrutura real do projeto
+## Estrutura do projeto
 ```
-app/                          ← Expo Router routes (file-based)
-  index.tsx                   ← Redireciona para /(main)/home
-  _layout.tsx                 ← Root layout (fonts, error boundary)
-  (main)/
-    _layout.tsx               ← Layout principal (TopBar + BottomNavBar + Slot)
-    home/index.tsx
-    finances/index.tsx
-    timesheets/index.tsx
+app/                    ← Expo Router routes (file-based)
+  index.tsx             ← Redireciona para /(main)/home
+  _layout.tsx           ← Root layout (fonts, error boundary)
+  (main)/               ← Layout principal (TopBar + BottomNavBar + Slot)
+    home/ finances/ timesheets/
 
 src/
   components/
-    chat/                     ← ChatBubbleContainer, ChatInput, ChatMessage, etc.
-    finances/                 ← ManualInvoiceEntry (modal) para submissão manual
-    home/                     ← QuickActionsSection, QuickActionFormModal
-    navigation/               ← TopBar, BottomNavBar, ProfileSidebar
-    settings/                 ← NavBarEditor (customização dos tabs da bottom bar)
-    timesheets/               ← CalendarGrid, DayCell, EntryFormModal, WeekStrip, etc.
-    ui/                       ← ActionListRow, Button, Card, DateField, Divider, EmptyState, SelectField, TextField, etc.
-  contexts/
-    RefreshContext.tsx         ← Refresh via remount: expõe `refreshing` + `refreshKey`; ao incrementar `refreshKey` o layout desmonta/remonta a página ativa (re-executa todos os hooks e API calls automaticamente)
-  hooks/
-    useChatAnimation.ts
-    useCalendarAnimation.ts
-    useGreeting.ts
-    useKeyboard.ts
-    useSlideUpModalAnimation.ts
-    useProfileAnimation.ts
-    useResponsive.ts
-    useTimesheets.ts
+    chat/               ← Bubble, input, mensagens do chat
+    finances/           ← ManualInvoiceEntry (modal full-screen)
+    home/               ← QuickActions
+    navigation/         ← TopBar, BottomNavBar, ProfileSidebar
+    settings/           ← NavBarEditor
+    timesheets/         ← CalendarGrid, DayCell, EntryFormModal, WeekStrip
+    ui/                 ← Componentes reutilizáveis (Button, Card, TextField, SelectField, DateField, ActionListRow, etc.)
+  contexts/             ← RefreshContext (remount via refreshKey)
+  hooks/                ← Animações, keyboard, responsive, domínio (timesheets, chat)
   services/
-    adapters/                 ← Adaptadores API->domínio por feature (chat, timesheets)
-    api/
-      anthropic.ts            ← Claude HTTP client direto (legacy path, quando MCP_ENABLED=false)
-      mcp.ts                  ← MCP client: mcpCall + wrappers tipados (mcpChatSend, mcpBootstrap, mcpScan)
-    chat/chatService.ts
-    timesheets/timesheetsService.ts
-  i18n/
-    index.ts                  ← Inicialização i18next (importado em _layout.tsx)
-    types.ts                  ← Module augmentation para i18next
-    locales/
-      en/                     ← Traduções EN (common, home, finances, timesheets, chat, settings, more)
-      pt/                     ← Traduções PT (mesmos ficheiros)
-  stores/                     ← Zustand stores
-    useChatStore.ts           ← Mensagens + persistência AsyncStorage
-    useFinancesStore.ts
-    useLanguageStore.ts       ← Idioma do utilizador (EN/PT) + persistência AsyncStorage
-    useNavBarStore.ts         ← Tabs da bottom bar (ordem + seleção) + persistência AsyncStorage
-    useSidebarStore.ts
-    useTimesheetsStore.ts
-  theme/
-    colors.ts                 ← Paleta semântica + escala cinzento (100–900)
-    typography.ts             ← Inter font, tamanhos e pesos
-    spacing.ts                ← Escala base 4px (Spacing.1=4, Spacing.2=8, …)
-    shadows.ts                ← Platform.select iOS/Android
-    index.ts
-  types/
-    api.types.ts, chat.types.ts, finances.types.ts,
-    mcp.types.ts,                 ← DTOs do contrato MCP (ChatHistoryEntry, McpChatSendResult, etc.)
-    navigation.types.ts, timesheets.ts, index.ts
-  constants/
-    app.constants.ts          ← APP_NAME, USER_NAME, FEATURES, ROUTES, SIDEBAR_WIDTH
-    animation.constants.ts    ← Durations, easing e spring configs canónicos
-    formOptions.constants.ts  ← Opções reutilizáveis de formulários (finances)
-    ui.constants.ts           ← HIT_SLOP e valores de interação reutilizáveis
-    image.constants.ts        ← Config partilhada de image picker/upload
-    llm.constants.ts          ← ANTHROPIC_CONFIG (legacy) + MCP_CONFIG + MCP_METHODS
-    chat.constants.ts         ← Textos/strings reutilizáveis do domínio de chat
-    navigation.constants.ts   ← NavTabRegistry, IDs fixos/opcionais, MAX_NAV_TABS
-    quickActions.constants.ts ← Opções e limites de quick actions
-    suggestions.ts            ← Chat suggestions por defeito
+    adapters/           ← Adaptadores API->domínio por feature
+    api/mcp.ts          ← MCP client (mcpCall + wrappers tipados)
+    chat/ timesheets/ finances/
+  i18n/                 ← i18next setup + locales/{en,pt}/
+  stores/               ← Zustand stores (ver tabela abaixo)
+  theme/                ← colors, typography, spacing, shadows
+  types/                ← DTOs e tipos por domínio
+  constants/            ← Single source of truth para config transversal (animações, nav, LLM, UI, etc.)
 ```
 
 ## Estado global (Zustand)
@@ -195,88 +105,31 @@ Cada store é um ficheiro em `src/stores/`, hook-based, sem Redux/Context pesado
 
 ## Internacionalização (i18n)
 
-Toda a UI suporta EN e PT via `i18next` + `react-i18next`.
+Toda a UI suporta EN e PT via `i18next` + `react-i18next`. Traduções em `src/i18n/locales/{en,pt}/`. `useLanguageStore` persiste a preferência (default = idioma do dispositivo).
 
-### Setup
-- `src/i18n/index.ts` inicializa o i18next — importado no topo de `app/_layout.tsx`
-- Traduções em JSON: `src/i18n/locales/{en,pt}/{common,home,finances,timesheets,chat,settings,more}.json`
-- `useLanguageStore` persiste a preferência; default = idioma do dispositivo (`expo-localization`)
-
-### Padrões de uso
-```ts
-// Em componentes funcionais — hook com namespace
-const { t } = useTranslation('timesheets');
-t('form.project')                         // chave do namespace atual
-t('common:save')                          // cross-namespace com prefixo
-t('dayDetail.hoursLogged', { totalHours }) // interpolação {{variable}}
-t('quickActions.count', { count: 3 })     // pluralização (_one / _other)
-
-// Em funções fora de componentes (validação, services)
-import i18n from '@/src/i18n';
-i18n.t('timesheets:validation.projectRequired')
-
-// Em class components (ErrorBoundary)
-import i18n from '@/src/i18n';
-i18n.t('error.somethingWentWrong')
-```
-
-### Regras
-- **Nunca hardcodar texto de UI.** Todas as strings visíveis ao utilizador devem estar nos JSON de locale.
-- Prompts de LLM (system messages para a API) **NÃO são traduzidos** — ficam em inglês.
-- Quick actions criadas pelo utilizador guardam `title`/`description` como texto livre; só as default actions usam `t()`.
-- Datas usam `Intl.DateTimeFormat` com `i18n.language` como locale.
-- Para adicionar um novo idioma: criar pasta `src/i18n/locales/{code}/`, copiar os JSONs, traduzir, registar em `src/i18n/index.ts` e adicionar opção em `useLanguageStore`.
+- Componentes: `useTranslation('namespace')` → `t('key')`, cross-namespace com `t('common:save')`
+- Fora de componentes: `import i18n from '@/src/i18n'` → `i18n.t('ns:key')`
+- **Nunca hardcodar texto de UI** — todas as strings visíveis ao utilizador nos JSON de locale
+- Prompts de LLM **NÃO são traduzidos** — ficam em inglês
+- Datas usam `Intl.DateTimeFormat` com `i18n.language` como locale
+- Novo idioma: criar pasta `src/i18n/locales/{code}/`, traduzir JSONs, registar em `index.ts` + `useLanguageStore`
 
 ## Camada de serviços
-Todas as chamadas à API ficam em `src/services/`, nunca na UI nem nos stores diretamente.
+Todas as chamadas à API ficam em `src/services/`, nunca na UI nem nos stores.
 
-- Adaptadores por domínio devem viver em `src/services/adapters/` para converter payloads externos (API/LLM/mock) em modelos internos tipados da app.
-- Services não devem fazer parsing/mapeamento complexo inline; devem delegar para adapters para facilitar debug, testes e evolução de contratos.
-- UI e stores não devem importar `src/services/api/*` nem `src/services/adapters/*` diretamente; devem consumir apenas services de domínio.
-- Contratos externos devem ser tipados no adapter (ex: `*Api`, `*ApiResponse`) e normalizados no mesmo ficheiro.
-- Quando o backend mudar o payload, ajustar primeiro o adapter do domínio; evitar mexer em componentes/stores sem necessidade.
-
-- `anthropic.ts` — cliente HTTP direto para Anthropic API (legacy path, usado quando `MCP_ENABLED=false`)
-- `mcp.ts` — MCP client com `mcpCall()` genérico + wrappers tipados (`mcpChatSend`, `mcpBootstrap`, `mcpScan`)
-- `chatService.ts` — `sendMessage(content, history)`, saudações. Usa `FEATURES.MCP_ENABLED` para escolher entre MCP e Anthropic direto
-- `expenseScanService.ts` — scan de recibos. Mesmo padrão de feature flag MCP/legacy
-- `timesheetsService.ts` — dados mock; switch via `FEATURES.BACKEND_CONNECTED`
+- **Adapters** (`services/adapters/`): convertem payloads externos em modelos internos. Contratos externos tipados e normalizados no adapter. Quando o backend mudar, ajustar primeiro o adapter.
+- **Hierarquia de imports**: UI/stores → services de domínio → adapters/api. UI nunca importa adapters nem api diretamente.
+- Services de domínio: `chatService`, `expenseScanService` (via MCP), `timesheetsService` (mock, switch via `FEATURES.BACKEND_CONNECTED`)
 
 ## Sistema de tema
-Tokens centralizados em `src/theme/`. **Nunca hardcodar cores, espaçamentos ou tipografia.**
-
-Complemento obrigatório de DRY: durações de animação, spring configs, hitSlop, opções de formulário e config de integrações devem viver em `src/constants/` (não hardcoded em componentes/serviços).
-
-- A definição de temas vive em `src/theme/colors.ts`:
-  - `themes` (paleta de cada tema)
-  - `THEME_CATALOG` (label/descrição para UI)
-  - `DEFAULT_THEME_ID` (tema inicial persistido)
-- A página de Settings gera as opções a partir de `themes` + `THEME_CATALOG`; para adicionar novo tema, atualizar `colors.ts`.
-
-```ts
-Colors.background, Colors.textPrimary, Colors.bubbleUser, ...
-Spacing[1]=4, Spacing[2]=8, Spacing[3]=12, Spacing[4]=16, ...
-Typography.fontFamily.regular, Typography.size.base=15, ...
-Shadows.sm  // Platform.select iOS/Android
-```
+Tokens centralizados em `src/theme/` (`Colors`, `Spacing`, `Typography`, `Shadows`). Temas definidos em `colors.ts` (`themes` + `THEME_CATALOG`); para adicionar novo tema, atualizar `colors.ts`.
 
 ## Padrões de componentes
-- Props: interface `ComponentNameProps`, handle: `ComponentNameHandle`
-- Variantes com union types: `type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost'`
-- Estilos: `StyleSheet.create()` + arrays condicionais `[styles.base, isActive && styles.active]`
-- Animated styles: `useAnimatedStyle()` → `<Animated.View style={animStyle}>`
-- Icons: `phosphor-react-native` (preferencial) ou `@expo/vector-icons`
-- Acessibilidade: `accessibilityRole`, `accessibilityLabel`, `accessibilityState` em todos os elementos interativos
-- Hit slop para botões pequenos: `hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}`
-- Dropdowns/selects de formulários devem usar `src/components/ui/SelectField` (evitar implementações inline duplicadas por domínio)
-- Inputs de texto de formulários devem usar `src/components/ui/TextField` (label/required/helper + estilo base partilhado)
-- Inputs de data de formulários devem usar `src/components/ui/DateField` (picker nativo iOS/Android + estilo base partilhado)
-- Linhas de ação/listas lineares (título + subtítulo opcional + meta + seta) devem usar `src/components/ui/ActionListRow` para manter consistência entre Home/Chat/Finances
-
-## Padrão de modais full-screen
-- Modais slide-up devem usar o hook partilhado `useSlideUpModalAnimation` para controlar `mounted`, `slideY`, `backdropOpacity` e `animateClose`.
-- Evitar duplicar setup de `Animated.Value`, timings e spring configs em cada modal.
-- A lógica de estado do formulário continua no componente de domínio; a lógica de lifecycle/animação fica no hook.
+- Props: `ComponentNameProps` interface, handle: `ComponentNameHandle`
+- Variantes com union types, estilos com `StyleSheet.create()` + arrays condicionais
+- Icons: `phosphor-react-native` (preferencial), acessibilidade obrigatória em interativos
+- **Componentes UI reutilizáveis** (em `src/components/ui/`): `SelectField`, `TextField`, `DateField` para formulários; `ActionListRow` para listas lineares; `Button`, `Card`, etc.
+- Modais slide-up: usar hook `useSlideUpModalAnimation` (não duplicar setup de animação)
 
 ## Finances — padrão atual
 - A página de finances usa fluxo de **submissão manual via modal full-screen** (slide-up), alinhado visualmente com o `EntryFormModal` de timesheets.
@@ -295,11 +148,9 @@ Shadows.sm  // Platform.select iOS/Android
 // src/constants/app.constants.ts
 export const FEATURES = {
   BACKEND_CONNECTED: false,
-  MCP_ENABLED: false,
 };
 ```
 - `BACKEND_CONNECTED`: quando `false`, `timesheetsService` devolve dados mock. Ligar quando o backend estiver pronto.
-- `MCP_ENABLED`: quando `false`, o chat usa chamadas diretas ao Anthropic API (legacy). Quando `true`, todas as chamadas LLM passam pelo MCP server. Ligar quando o MCP server estiver a correr.
 
 ## MCP Server (`mcp-server/`)
 
@@ -325,14 +176,15 @@ mcp-server/src/
 | `tools/list` | `{}` | `{ tools[] }` |
 | `tools/call` | `{ name, arguments }` | `{ content[] }` |
 
-### Provider swap
-`LLM_PROVIDER=anthropic|openai` no `.env` do server. O client não sabe qual provider está a ser usado.
-
-### Server swap (modularidade)
-O contrato cliente-servidor são os 3 métodos `chat/*`. Qualquer servidor que implemente estes métodos com JSON-RPC 2.0 em `/mcp` é drop-in replacement. Trocar server = mudar `EXPO_PUBLIC_MCP_URL`.
+### Provider & server swap
+- `LLM_PROVIDER=anthropic|openai` no `.env` do server — client é agnostic
+- O contrato são os 3 métodos `chat/*` via JSON-RPC 2.0 em `/mcp`. Trocar server = mudar `EXPO_PUBLIC_MCP_URL`
 
 ### Tools fictícias (mock ARMIS API)
-`getTimesheets`, `createTimesheetEntry`, `getExpenses`, `submitExpense`, `getProjects`, `getEmployeeInfo` — leem de `fixtures/*.json`. Quando a API ARMIS real estiver disponível, substituir handler mock por HTTP call.
+`getTimesheets`, `createTimesheetEntry`, `getExpenses`, `submitExpense`, `getProjects`, `getEmployeeInfo` — leem de `fixtures/*.json`. Substituir por HTTP calls quando a API real estiver disponível.
+
+### Contexto do ARMINI — via MCP tools, NUNCA via system prompt
+O ARMINI obtém contexto **exclusivamente via MCP tools** no loop agentic do server. **Nunca injetar dados de stores/contexto do cliente no system prompt nem como parâmetros extra do `chat/send`.** O client envia apenas `messages`, `language`, `userName` e opcionalmente `imageData`.
 
 ### Comandos do server
 - `cd mcp-server && npm run dev` — dev mode com hot reload
@@ -340,17 +192,13 @@ O contrato cliente-servidor são os 3 métodos `chat/*`. Qualquer servidor que i
 - `cd mcp-server && npm run build` — compilar para dist/
 
 ## Regras de código
-- **Nunca fazer assumptions.** Se houver qualquer dúvida sobre requisitos, design, comportamento esperado ou abordagem, perguntar ao utilizador antes de avançar. Preferir clarificar do que assumir.
-- Componentes funcionais com hooks, sem classes
-- ES modules (import/export), sem CommonJS
+- **Nunca fazer assumptions.** Se houver dúvida, perguntar ao utilizador antes de avançar
+- Componentes funcionais com hooks, sem classes. ES modules, sem CommonJS
 - Nomes de ficheiros e variáveis em inglês, comentários em português
 - Typecheck obrigatório antes de terminar qualquer sessão (`npx tsc --noEmit`)
-- DRY: antes de criar um novo componente, verificar se já existe algo reutilizável em `src/components/ui/`
-- Extrair para `src/components/` qualquer componente usado em mais do que um sítio
-- Sem duplicação de lógica: funções utilitárias e chamadas à API partilhadas, nunca copiadas
-- Textos de UI/configuração que alimentam ecrãs (ex: opções de tema em Settings) devem viver em `src/constants/` e não hardcoded dentro dos componentes
-- Configurações transversais (animações, hitSlop, opções de formulário, LLM/image picker) devem ser single source of truth em `src/constants/`
-- Componentes legados sem referências no projeto devem ser removidos (não manter código morto)
+- **Nunca hardcodar** cores, espaçamentos, tipografia, textos de UI, nem config transversal — usar `src/theme/`, `src/i18n/`, `src/constants/`
+- DRY: verificar `src/components/ui/` antes de criar componente novo; extrair se usado em >1 sítio
+- Sem duplicação de lógica; remover código morto sem referências
 
 ## Checklist rápido por PR
 - Se houver integração com API/LLM: mapping/parsing ficou no adapter do domínio (e não inline no service/UI).
@@ -364,9 +212,12 @@ O contrato cliente-servidor são os 3 métodos `chat/*`. Qualquer servidor que i
 - O input de chat só deve limpar texto/imagem após sucesso da chamada; em erro deve preservar draft para retry manual.
 - Erros de chat devem ser visíveis no container com ação explícita de dismiss (evitar falhas silenciosas).
 
+## Gotchas conhecidos
+<!-- Registar aqui bugs conhecidos, limitações de plataforma, quirks de dependências, e armadilhas encontradas durante desenvolvimento. Formato: bullet com contexto suficiente para evitar que alguém caia no mesmo problema. -->
+
+
 ## ⚠️ Restrições importantes
-- A API key do LLM está no bundle no path legacy — NUNCA para produção
-- Em produção, chamadas ao LLM têm de passar pelo MCP server (`MCP_ENABLED=true`), nunca pelo cliente direto
+- Todas as chamadas LLM passam pelo MCP server — o cliente nunca contacta APIs de LLM diretamente
 - Não adicionar dependências nativas sem verificar compatibilidade com a versão atual do RN/Expo SDK
 - **Instalar pacotes Expo sempre com `npx expo install <pacote>`**, nunca com `npm install` — o `expo install` resolve automaticamente a versão compatível com o SDK do projeto e evita desalinhamentos de versão
 

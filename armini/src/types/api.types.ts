@@ -2,7 +2,7 @@ export interface MCPRequest {
   jsonrpc: '2.0';
   id: string | number;
   method: string;
-  params: Record<string, unknown>;
+  params: object;
 }
 
 export interface MCPError {

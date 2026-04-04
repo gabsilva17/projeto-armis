@@ -2,10 +2,11 @@ import { useRef } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { GreetingHeader } from './GreetingHeader';
 import { SuggestionChips } from './SuggestionChips';
+import { ChatDropdownSelector } from './ChatDropdownSelector';
 import { ChatMessage } from './ChatMessage';
 import { LoadingDots } from './LoadingDots';
 import { Spacing, useTheme } from '@/src/theme';
-import type { Message, SuggestionChip, ExpenseActionType } from '@/src/types/chat.types';
+import type { ChatDropdown, Message, SuggestionChip, ExpenseActionType } from '@/src/types/chat.types';
 
 interface ChatMessageListProps {
   messages: Message[];
@@ -13,7 +14,9 @@ interface ChatMessageListProps {
   greeting: string;
   messageOfDay: string;
   suggestions: SuggestionChip[];
+  dropdown: ChatDropdown | null;
   onSuggestionSelect: (prompt: string) => void;
+  onDropdownSelect: (value: string) => void;
   onExpenseAction?: (actionType: ExpenseActionType) => void;
 }
 
@@ -23,7 +26,9 @@ export function ChatMessageList({
   greeting,
   messageOfDay,
   suggestions,
+  dropdown,
   onSuggestionSelect,
+  onDropdownSelect,
   onExpenseAction,
 }: ChatMessageListProps) {
   const colors = useTheme();
@@ -50,6 +55,9 @@ export function ChatMessageList({
       ListFooterComponent={
         <>
           {isLoading ? <LoadingDots /> : null}
+          {showSuggestions && dropdown ? (
+            <ChatDropdownSelector dropdown={dropdown} onSelect={onDropdownSelect} />
+          ) : null}
           {showSuggestions ? (
             <SuggestionChips chips={suggestions} onSelect={onSuggestionSelect} />
           ) : null}

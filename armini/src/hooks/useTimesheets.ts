@@ -55,17 +55,12 @@ export function useTimesheets(): UseTimesheetsReturn {
   const isLoading = useTimesheetsStore((s) => s.isLoading);
   const isRefreshing = useTimesheetsStore((s) => s.isRefreshing);
   const error = useTimesheetsStore((s) => s.error);
-  const load = useTimesheetsStore((s) => s.load);
+
   const refreshStore = useTimesheetsStore((s) => s.refresh);
   const addEntryStore = useTimesheetsStore((s) => s.addEntry);
   const editEntryStore = useTimesheetsStore((s) => s.editEntry);
   const deleteEntryStore = useTimesheetsStore((s) => s.deleteEntry);
   const getMonthData = useTimesheetsStore((s) => s.getMonthData);
-
-  // Load data only once (store guards against duplicate fetches)
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   // Derive monthData from the store
   const monthData = useMemo(

@@ -30,11 +30,22 @@ export interface McpToolCall {
   result?: string;
 }
 
+export interface McpDropdownOption {
+  label: string;
+  value: string;
+}
+
+export interface McpDropdown {
+  label: string;
+  options: McpDropdownOption[];
+}
+
 export interface McpChatSendResult {
   text: string;
   suggestions: McpSuggestion[];
   actions: McpAction[];
   toolCalls: McpToolCall[];
+  dropdown?: McpDropdown;
 }
 
 export interface McpBootstrapParams {
@@ -61,4 +72,20 @@ export interface McpScanResult {
     currency?: string;
     observations?: string;
   };
+}
+
+// ── tools/call ──────────────────────────────────────────────────────
+
+export interface McpToolsCallParams {
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface McpToolContentItem {
+  type: 'text';
+  text: string;
+}
+
+export interface McpToolsCallResult {
+  content: McpToolContentItem[];
 }
