@@ -1,5 +1,4 @@
 {
-  "title": "ARMINI Chat",
   "chatGreeting": {
     "morning": "How can I help you this morning?",
     "afternoon": "How can I help you this afternoon?",
@@ -18,10 +17,8 @@
   "deleteChat": "Delete chat",
   "chatOptions": "Chat options",
   "inputPlaceholder": "Chat with ARMINI…",
-  "inputPlaceholderWithImage": "Add a caption…",
   "sendMessage": "Send message",
   "messageInput": "Message input",
-  "dismissError": "Dismiss chat error",
   "suggestions": {
     "reviewLast15Days": {
       "label": "Review my last 15 days",
@@ -40,7 +37,6 @@
       "prompt": "Suggest what I should log next for the missing workdays, without submitting anything."
     }
   },
-  "imageAnalysisPrompt": "Please analyze this image and tell me what you see.",
   "expenseActions": {
     "chat": "Enter via chat",
     "photo": "Send photo"

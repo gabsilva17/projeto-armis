@@ -30,20 +30,20 @@ export interface SuggestionChip {
   prompt: string;
 }
 
+export interface ChatDropdownOption {
+  label: string;
+  value: string;
+}
+
+export interface ChatDropdown {
+  id: string;
+  label: string;
+  options: ChatDropdownOption[];
+}
+
 export interface AiResponsePayload {
   message: Message;
   suggestions: SuggestionChip[];
   toolCallMessages: Message[];
+  dropdown?: ChatDropdown;
 }
-
-export interface ChatState {
-  messages: Message[];
-  isLoading: boolean;
-  error: string | null;
-}
-
-export type ChatAction =
-  | { type: 'ADD_MESSAGE'; payload: Message }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'CLEAR' };

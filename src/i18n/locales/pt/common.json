@@ -11,8 +11,6 @@
   "edit": "Editar",
   "duplicate": "Duplicar",
   "retry": "Tentar novamente",
-  "dismiss": "Fechar",
-  "back": "Voltar",
   "close": "Fechar",
   "loading": "A carregar…",
   "error": {
@@ -22,21 +20,8 @@
   },
   "permission": {
     "required": "Permissão necessária",
-    "camera": "É necessário acesso à câmara para tirar uma foto.",
-    "photoLibrary": "É necessário acesso à galeria de fotos.",
     "cameraReceipt": "É necessário acesso à câmara para digitalizar recibos."
   },
-  "imagePicker": {
-    "cancel": "Cancelar",
-    "takePhoto": "Tirar Foto",
-    "chooseFromLibrary": "Escolher da Galeria",
-    "choosePdf": "Escolher PDF"
-  },
-  "camera": "Câmara",
-  "gallery": "Galeria",
-  "couldNotOpenCamera": "Não foi possível abrir a câmara.",
-  "couldNotOpenPhotoLibrary": "Não foi possível abrir a galeria de fotos.",
-  "removeImage": "Remover imagem",
   "sidebar": {
     "employee": "Colaborador · ARMIS",
     "account": "Conta",

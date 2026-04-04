@@ -8,6 +8,8 @@ import type {
   McpBootstrapResult,
   McpScanParams,
   McpScanResult,
+  McpToolsCallParams,
+  McpToolsCallResult,
 } from '../../types/mcp.types';
 
 const BASE_URL = `${MCP_CONFIG.baseUrl}${MCP_CONFIG.endpoint}`;
@@ -16,7 +18,7 @@ let _requestId = 0;
 
 export async function mcpCall<T>(
   method: string,
-  params: Record<string, unknown>,
+  params: object,
 ): Promise<T> {
   const request: MCPRequest = {
     jsonrpc: '2.0',
@@ -64,13 +66,17 @@ export async function mcpCall<T>(
 // ── Typed wrappers ──────────────────────────────────────────────────
 
 export function mcpChatSend(params: McpChatSendParams): Promise<McpChatSendResult> {
-  return mcpCall<McpChatSendResult>(MCP_METHODS.CHAT_SEND, params as unknown as Record<string, unknown>);
+  return mcpCall<McpChatSendResult>(MCP_METHODS.CHAT_SEND, params);
 }
 
 export function mcpBootstrap(params: McpBootstrapParams): Promise<McpBootstrapResult> {
-  return mcpCall<McpBootstrapResult>(MCP_METHODS.CHAT_BOOTSTRAP, params as unknown as Record<string, unknown>);
+  return mcpCall<McpBootstrapResult>(MCP_METHODS.CHAT_BOOTSTRAP, params);
 }
 
 export function mcpScan(params: McpScanParams): Promise<McpScanResult> {
-  return mcpCall<McpScanResult>(MCP_METHODS.CHAT_SCAN, params as unknown as Record<string, unknown>);
+  return mcpCall<McpScanResult>(MCP_METHODS.CHAT_SCAN, params);
+}
+
+export function mcpToolsCall(params: McpToolsCallParams): Promise<McpToolsCallResult> {
+  return mcpCall<McpToolsCallResult>(MCP_METHODS.TOOLS_CALL, params);
 }

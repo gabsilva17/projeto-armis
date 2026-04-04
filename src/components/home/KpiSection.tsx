@@ -8,7 +8,7 @@ import {
   Umbrella,
   FileText,
 } from 'phosphor-react-native';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -67,13 +67,8 @@ export function KpiSection() {
   const colors = useTheme();
   const { t } = useTranslation('home');
 
-  const load = useTimesheetsStore((s) => s.load);
   const allEntries = useTimesheetsStore((s) => s.allEntries);
   const hasLoaded = useTimesheetsStore((s) => s.hasLoaded);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const kpis = useMemo(() => {
     const now = new Date();

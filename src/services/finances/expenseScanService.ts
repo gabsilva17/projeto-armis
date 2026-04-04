@@ -2,10 +2,7 @@ import {
   CURRENCY_OPTIONS,
   EXPENSE_TYPE_OPTIONS,
 } from '@/src/constants/formOptions.constants';
-import { FEATURES } from '@/src/constants/app.constants';
-import { callClaude, type AnthropicMessage } from '../api/anthropic';
 import { mcpScan } from '../api/mcp';
-import { createImagePromptContent, createDocumentPromptContent } from '../adapters/chatAdapter';
 import type { ManualExpenseForm } from '@/src/types/finances.types';
 
 interface ExtractedExpenseData {
@@ -15,44 +12,6 @@ interface ExtractedExpenseData {
   unitValue?: string;
   currency?: string;
   observations?: string;
-}
-
-const EXPENSE_SCAN_PROMPT = `Extract expense data from this receipt/invoice (image or PDF document).
-The document is most likely in Portuguese (Portugal). Expect labels such as "Total", "IVA", "Data", "NIF", "Fatura", "Recibo", "Contribuinte", etc.
-
-Allowed expenseType values: ${EXPENSE_TYPE_OPTIONS.join(', ')}
-Allowed currency values: ${CURRENCY_OPTIONS.join(', ')}
-
-Return ONLY a JSON object (no markdown, no explanation, no suggestions):
-
-{
-  "date": "mm/dd/yyyy",
-  "expenseType": "exactly one of the allowed values above",
-  "quantity": "number (default 1)",
-  "unitValue": "total amount, number with up to 2 decimal places",
-  "currency": "exactly one of the allowed values above",
-  "observations": "brief description in Portuguese"
-}
-
-Rules:
-- date: Portuguese dates use dd/mm/yyyy or dd-mm-yyyy — swap day and month to produce mm/dd/yyyy. Look for "Data", "Data/Hora", "Emissão". Omit if not found.
-- expenseType: choose the best match from the allowed values based on the vendor type, items purchased, or context of the receipt. If nothing fits, use "Others".
-- quantity: use "1" unless the receipt clearly shows a different item count.
-- unitValue: use the final total ("Total", "Total a Pagar"), not subtotals or IVA lines. Use dot as decimal separator (convert comma to dot). Strip currency symbols.
-- currency: detect from symbols or text. Default to "EUR".
-- observations: vendor/store name, NIF if visible, and brief summary of items. Write in Portuguese.
-- Omit any field that cannot be determined.
-- Return ONLY the raw JSON. No extra text.`;
-
-function extractJsonObject(text: string): string {
-  const codeFenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = codeFenceMatch ? codeFenceMatch[1] : text;
-  const start = candidate.indexOf('{');
-  const end = candidate.lastIndexOf('}');
-  if (start === -1 || end === -1 || end < start) {
-    throw new Error('No JSON object found in scan response.');
-  }
-  return candidate.slice(start, end + 1);
 }
 
 function sanitizeExtractedData(raw: ExtractedExpenseData): Partial<ManualExpenseForm> {
@@ -95,44 +54,10 @@ function sanitizeExtractedData(raw: ExtractedExpenseData): Partial<ManualExpense
   return result;
 }
 
-const SCAN_SYSTEM_CONTEXT = 'This is an automated expense scan request. Return ONLY the JSON object with extracted fields. Do not add suggestions, next steps, greetings, or any text outside the JSON.';
-
-export async function scanReceiptImage(base64: string): Promise<Partial<ManualExpenseForm>> {
-  if (FEATURES.MCP_ENABLED) {
-    const result = await mcpScan({ base64, mediaType: 'image/jpeg' });
-    return sanitizeExtractedData(result.expenseData as ExtractedExpenseData);
-  }
-
-  // Legacy Anthropic path
-  const imageContent = createImagePromptContent(base64, EXPENSE_SCAN_PROMPT, EXPENSE_SCAN_PROMPT);
-
-  const messages: AnthropicMessage[] = [
-    { role: 'user', content: imageContent },
-  ];
-
-  const responseText = await callClaude(messages, SCAN_SYSTEM_CONTEXT);
-  const jsonStr = extractJsonObject(responseText);
-  const parsed = JSON.parse(jsonStr) as ExtractedExpenseData;
-
-  return sanitizeExtractedData(parsed);
+async function scanReceipt(base64: string, mediaType: string): Promise<Partial<ManualExpenseForm>> {
+  const result = await mcpScan({ base64, mediaType });
+  return sanitizeExtractedData(result.expenseData as ExtractedExpenseData);
 }
 
-export async function scanReceiptDocument(base64: string): Promise<Partial<ManualExpenseForm>> {
-  if (FEATURES.MCP_ENABLED) {
-    const result = await mcpScan({ base64, mediaType: 'application/pdf' });
-    return sanitizeExtractedData(result.expenseData as ExtractedExpenseData);
-  }
-
-  // Legacy Anthropic path
-  const documentContent = createDocumentPromptContent(base64, EXPENSE_SCAN_PROMPT, EXPENSE_SCAN_PROMPT);
-
-  const messages: AnthropicMessage[] = [
-    { role: 'user', content: documentContent },
-  ];
-
-  const responseText = await callClaude(messages, SCAN_SYSTEM_CONTEXT);
-  const jsonStr = extractJsonObject(responseText);
-  const parsed = JSON.parse(jsonStr) as ExtractedExpenseData;
-
-  return sanitizeExtractedData(parsed);
-}
+export const scanReceiptImage = (base64: string) => scanReceipt(base64, 'image/jpeg');
+export const scanReceiptDocument = (base64: string) => scanReceipt(base64, 'application/pdf');

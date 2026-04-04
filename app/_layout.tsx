@@ -2,6 +2,8 @@ import '@/src/i18n';
 import i18n from '@/src/i18n';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { useSidebarStore } from '@/src/stores/useSidebarStore';
+import { useTimesheetsStore } from '@/src/stores/useTimesheetsStore';
+import { useFinancesStore } from '@/src/stores/useFinancesStore';
 import { Spacing, Typography } from '@/src/theme';
 import { themes } from '@/src/theme/colors';
 import { useThemeStore } from '@/src/stores/useThemeStore';
@@ -108,6 +110,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
+      // Hidratar stores de domínio com dados do MCP server (mock phase)
+      void useTimesheetsStore.getState().load();
+      void useFinancesStore.getState().load();
     }
   }, [fontsLoaded]);
 

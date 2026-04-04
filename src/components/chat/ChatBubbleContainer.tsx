@@ -37,10 +37,12 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
   const {
     messages,
     suggestions,
+    dropdown,
     isLoading,
     error,
     ensureSessionBootstrap,
     sendMessage,
+    selectDropdownOption,
     clearMessages,
     clearError,
   } = useChatStore();
@@ -103,6 +105,10 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
 
   const handleSuggestionSelect = (prompt: string) => {
     void sendMessage(prompt);
+  };
+
+  const handleDropdownSelect = (value: string) => {
+    void selectDropdownOption(value);
   };
 
   const handleExpenseAction = useCallback((actionType: ExpenseActionType) => {
@@ -220,7 +226,9 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
               greeting={chatGreeting}
               messageOfDay=""
               suggestions={suggestions}
+              dropdown={dropdown}
               onSuggestionSelect={handleSuggestionSelect}
+              onDropdownSelect={handleDropdownSelect}
               onExpenseAction={handleExpenseAction}
             />
             <ChatInput
