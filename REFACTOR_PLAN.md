@@ -186,7 +186,7 @@ Tracked in user memory `project_architectural_split_deferred.md` until Phase 7 l
 
 ---
 
-## Phase 7 — Carve out `mcp/` + rename `mcp-server/` → `ai-gateway/`
+## Phase 7 — Carve out `mcp/` + rename `mcp-server/` → `ai-gateway/` ✅ Done (session of 2026-05-25)
 
 **Goal:** clean folder names and a true MCP server in its own process. AI Gateway becomes an MCP client over HTTP. No user-visible behavior change for the happy path.
 

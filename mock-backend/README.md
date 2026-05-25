@@ -1,6 +1,6 @@
 # ARMINI Mock Backend
 
-Mock of the Digital Hub .NET API. Mirrors the contract in `../swagger.json` so the mobile app and MCP server can hit a faithful stand-in until the real backend is wired up. The swap mock → real is a single env-var change on the consumer side (`EXPO_PUBLIC_BACKEND_URL` for the mobile app, `BACKEND_URL` for the MCP server — wired in later phases of `../REFACTOR_PLAN.md`).
+Mock of the Digital Hub .NET API. Mirrors the contract in `../swagger.json` so the mobile app and the MCP server can hit a faithful stand-in until the real backend is wired up. The swap mock → real is a single env-var change on the consumer side (`EXPO_PUBLIC_BACKEND_URL` for the mobile app, `BACKEND_URL` for `../mcp/`).
 
 ## Run
 

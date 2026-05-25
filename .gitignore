@@ -1,5 +1,5 @@
 # Root-level ignores for the ARMIS monorepo.
-# Per-project ignores live inside armini/, mcp-server/, and mock-backend/.
+# Per-project ignores live inside armini/, ai-gateway/, mcp/, and mock-backend/.
 
 # Accidental installs at the repo root (leading slash anchors to root only)
 /node_modules/

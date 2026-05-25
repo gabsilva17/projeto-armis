@@ -2,7 +2,7 @@ import {
   CURRENCY_OPTIONS,
   EXPENSE_TYPE_OPTIONS,
 } from '@/src/constants/formOptions.constants';
-import { mcpScan } from '../api/mcp';
+import { aiGatewayScan } from '../api/aiGateway';
 import type { ManualExpenseForm } from '@/src/types/finances.types';
 
 interface ExtractedExpenseData {
@@ -55,7 +55,7 @@ function sanitizeExtractedData(raw: ExtractedExpenseData): Partial<ManualExpense
 }
 
 async function scanReceipt(base64: string, mediaType: string): Promise<Partial<ManualExpenseForm>> {
-  const result = await mcpScan({ base64, mediaType });
+  const result = await aiGatewayScan({ base64, mediaType });
   return sanitizeExtractedData(result.expenseData as ExtractedExpenseData);
 }
 

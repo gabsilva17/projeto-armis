@@ -2,7 +2,7 @@ import i18n from '../../i18n';
 import { MESSAGES_OF_DAY_COUNT } from '../../constants/chat.constants';
 import { getDefaultSuggestions } from '../../constants/suggestions';
 import { USER_NAME } from '../../constants/app.constants';
-import { mcpChatSend, mcpBootstrap } from '../api/mcp';
+import { aiGatewayChatSend, aiGatewayBootstrap } from '../api/aiGateway';
 import {
   adaptHistoryToMcpEntries,
   adaptMcpBootstrapResult,
@@ -34,7 +34,7 @@ export { getDefaultSuggestions };
 // ── Startup (generates initial AI message + suggestions) ────────────
 
 export async function generateBootstrap(): Promise<{ message: Message; suggestions: SuggestionChip[] }> {
-  const result = await mcpBootstrap({ language: i18n.language, userName: USER_NAME });
+  const result = await aiGatewayBootstrap({ language: i18n.language, userName: USER_NAME });
   return adaptMcpBootstrapResult(result);
 }
 
@@ -59,7 +59,7 @@ export async function sendMessage(
 ): Promise<AiResponsePayload> {
   const messages = adaptHistoryToMcpEntries(history);
   messages.push({ role: 'user', content });
-  const result = await mcpChatSend({
+  const result = await aiGatewayChatSend({
     messages,
     language: i18n.language,
     userName: USER_NAME,

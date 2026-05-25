@@ -8,7 +8,7 @@ const BACKEND_PORT = 3002;
 function resolveBackendBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_BACKEND_URL) return process.env.EXPO_PUBLIC_BACKEND_URL;
 
-  // Em dev seguimos o IP da máquina via Metro (mesmo padrão do MCP_CONFIG).
+  // Em dev seguimos o IP da máquina via Metro (mesmo padrão do AI_GATEWAY_CONFIG).
   const hostUri =
     Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
   if (hostUri) {

@@ -1,8 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import { env } from './config/env.js';
-import { createProvider } from './providers/index.js';
-import { ChatOrchestrator } from './orchestrator/chatOrchestrator.js';
 import { ToolRegistry } from './tools/registry.js';
 import { createMcpRouter } from './transport/httpTransport.js';
 import { logger } from './utils/logger.js';
@@ -21,10 +19,8 @@ import { deleteExpenseDefinition, deleteExpenseHandler } from './tools/deleteExp
 
 // ── Bootstrap ───────────────────────────────────────────────────────
 
-const provider = createProvider();
 const toolRegistry = new ToolRegistry();
 
-// Register all mock ARMIS tools
 toolRegistry.register(getTimesheetsDefinition, getTimesheetsHandler);
 toolRegistry.register(createTimesheetEntryDefinition, createTimesheetEntryHandler);
 toolRegistry.register(editTimesheetEntryDefinition, editTimesheetEntryHandler);
@@ -36,27 +32,21 @@ toolRegistry.register(deleteExpenseDefinition, deleteExpenseHandler);
 toolRegistry.register(getProjectsDefinition, getProjectsHandler);
 toolRegistry.register(getEmployeeInfoDefinition, getEmployeeInfoHandler);
 
-const orchestrator = new ChatOrchestrator(provider, toolRegistry);
-
 // ── Express ─────────────────────────────────────────────────────────
 
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '20mb' })); // base64 images can be large
+app.use(express.json({ limit: '5mb' }));
 
-// Health check
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', provider: env.LLM_PROVIDER });
+  res.json({ status: 'ok', backendUrl: env.BACKEND_URL });
 });
 
-// MCP JSON-RPC endpoint
-app.use('/mcp', createMcpRouter(orchestrator, toolRegistry));
+app.use('/mcp', createMcpRouter(toolRegistry));
 
-// ── Start ───────────────────────────────────────────────────────────
-
-app.listen(env.PORT, () => {
-  logger.info(`ARMINI MCP Server running on http://localhost:${env.PORT}`);
-  logger.info(`LLM Provider: ${env.LLM_PROVIDER}`);
+app.listen(env.MCP_PORT, () => {
+  logger.info(`ARMINI MCP server running on http://localhost:${env.MCP_PORT}`);
+  logger.info(`Backend URL: ${env.BACKEND_URL}`);
   logger.info(`Registered tools: ${toolRegistry.list().length}`);
 });

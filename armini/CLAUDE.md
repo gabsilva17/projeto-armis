@@ -43,30 +43,31 @@ Estágio curricular LEI-ISEP, fevereiro a julho 2026.
 Use cases principais:
 - Gestão de timesheets (registo, edição, consulta de horas)
 - Submissão de faturas de despesas (incluindo via fotografia com extração automática de dados)
-- AI Companion — chat contextual via AI Gateway próprio (`mcp-server/`, ver § AI Gateway), provider-agnostic (Anthropic/OpenAI)
+- AI Companion — chat contextual via AI Gateway próprio (`ai-gateway/`, ver § AI Gateway), provider-agnostic (Anthropic/OpenAI). Tool execution vive num MCP server separado (`mcp/`).
 
-## Arquitetura — três processos locais
+## Arquitetura — quatro processos locais
 
 ```
-┌──────────────┐   chat (LLM)        ┌──────────────────────────┐
-│              │ ───────────────────▶│   AI Gateway             │
-│  armini/     │                     │   (mcp-server/, :3001)   │
-│  React       │                     │   JSON-RPC /mcp          │
-│  Native      │                     │   provider-agnostic LLM  │
-│  (Metro)     │                     │   + 10 stateless tools   │
-│              │                     └────────────┬─────────────┘
-│              │                                  │ HTTP /api/v1
-│              │   data (CRUD)                    ▼
-│              │ ───────────────────▶┌──────────────────────────┐
-└──────────────┘                     │   mock-backend (:3002)   │
-                                     │   In-memory Express      │
-                                     │   mirror de swagger.json │
-                                     └──────────────────────────┘
+┌──────────┐  chat        ┌────────────────────────┐  tools/*       ┌────────────────────┐
+│          │ ───────────▶ │   AI Gateway (:3001)   │ ─────────────▶ │   MCP (:3003)      │
+│ armini/  │              │   POST /mcp            │  (JSON-RPC)    │   POST /mcp        │
+│ Metro    │              │   chat/send,           │                │   tools/list,      │
+│          │              │   chat/bootstrap,      │                │   tools/call       │
+│          │              │   chat/scan            │                │   (10 tools)       │
+│          │              └────────────────────────┘                └─────────┬──────────┘
+│          │                                                                  │ HTTP /api/v1
+│          │  data (CRUD)                                                     ▼
+│          │ ───────────────────────────────────────────▶ ┌──────────────────────────────┐
+└──────────┘                                              │   mock-backend (:3002)       │
+                                                          │   In-memory Express          │
+                                                          │   mirror de swagger.json     │
+                                                          └──────────────────────────────┘
 ```
 
 - Mobile lê/escreve dados via **backend client** (`src/services/backend/`) que aponta para `mock-backend/`. Swap mock → .NET real = mudar `EXPO_PUBLIC_BACKEND_URL`.
-- Mobile fala com o **AI Gateway** apenas para chat/scan/bootstrap. O Gateway tem 10 tools stateless que, internamente, chamam o mesmo mock-backend.
-- O folder `mcp-server/` chama-se assim por razões históricas — funcionalmente é um AI Gateway. O carve-out de um MCP server verdadeiro está deferido (ver memória [[architectural-split-deferred]] e `REFACTOR_PLAN.md` § Phase 7).
+- Mobile fala **apenas** com o AI Gateway para chat/scan/bootstrap. Nunca fala com `mcp/` diretamente.
+- O AI Gateway é cliente MCP — em cada `chat/send` busca o catálogo de tools em `mcp/` e despacha tool calls para lá.
+- Os 10 handlers em `mcp/` são stateless e proxiam para o mesmo `mock-backend/`.
 
 ## Stack
 - React Native + TypeScript (strict mode)
@@ -78,7 +79,8 @@ Use cases principais:
 - `@react-native-community/datetimepicker` para seleção nativa de data nos formulários
 - **i18next** + `react-i18next` + `expo-localization` para internacionalização (EN/PT)
 - API backend (dados): REST .NET Core do Digital Hub (em dev, `mock-backend/` espelha o contrato de `swagger.json`)
-- AI Gateway (`mcp-server/`): Node.js + TypeScript + Express, provider-agnostic (Anthropic/OpenAI), JSON-RPC 2.0 — todas as chamadas LLM passam pelo Gateway
+- AI Gateway (`ai-gateway/`): Node.js + TypeScript + Express, provider-agnostic (Anthropic/OpenAI), JSON-RPC 2.0 — todas as chamadas LLM passam pelo Gateway
+- MCP server (`mcp/`): Node.js + TypeScript + Express + JSON-RPC 2.0 — host das tools que o AI Gateway despacha
 
 ## Estrutura do projeto
 ```
@@ -101,7 +103,7 @@ src/
   hooks/                ← Animações, keyboard, responsive, domínio (timesheets, chat)
   services/
     adapters/           ← Adaptadores API->domínio por feature
-    api/mcp.ts          ← MCP client (mcpCall + wrappers tipados)
+    api/aiGateway.ts    ← Cliente JSON-RPC do AI Gateway (aiGatewayCall + wrappers tipados)
     chat/ timesheets/ finances/
   i18n/                 ← i18next setup + locales/{en,pt}/
   stores/               ← Zustand stores (ver tabela abaixo)
@@ -128,7 +130,7 @@ Cada store é um ficheiro em `src/stores/`, hook-based, sem Redux/Context pesado
 `useTimesheetsStore` expõe `getMonthData(year, month)` que deriva `MonthSummary` do estado.
 `useNavBarStore` gere quais tabs opcionais aparecem na bottom bar e a sua ordem. Home e More são fixos (primeiro e último). Máximo de 5 tabs no total.
 `useToastStore` enfileira notificações não-bloqueantes. UI consome via `<Toast />` (em `src/components/ui/Toast.tsx`) montado uma vez em `app/_layout.tsx`; auto-dismiss a ~4s e a queue mostra uma mensagem de cada vez. Slide-in via Reanimated `entering`/`exiting` (`FadeInUp`/`FadeOutDown`), posicionado no fundo do ecrã para não interferir com a TopBar nem com o chat modal.
-`useAiAvailabilityStore` faz ping ao AI Gateway (`tools/list`, timeout 3s) no boot e a cada 15s. `_layout.tsx` subscreve transições para `false` e dispara o toast offline. `ChatBubbleContainer` exibe um banner sticky enquanto `isOnline === false`, e refaz `check()` ao abrir o chat para mostrar o estado fresco.
+`useAiAvailabilityStore` faz ping ao AI Gateway (`GET /health`, timeout 3s) no boot e a cada 15s. `_layout.tsx` subscreve transições para `false` e dispara o toast offline. `ChatBubbleContainer` exibe um banner sticky enquanto `isOnline === false`, e refaz `check()` ao abrir o chat para mostrar o estado fresco. (Phase 8 vai rebuildá-lo à volta de `chat/health` para distinguir AI Gateway offline vs. MCP offline.)
 
 ## Internacionalização (i18n)
 
@@ -148,7 +150,7 @@ Todas as chamadas à API ficam em `src/services/`, nunca na UI nem nos stores.
 - **Hierarquia de imports**: UI/stores → services de domínio → backend client/adapters. UI nunca importa o backend client nem os adapters diretamente.
 - **Backend client** (`services/backend/`): cliente tipado para a API .NET (mockada em dev pelo `mock-backend/`). Stores chamam services de domínio, que orquestram o client + adapters. Trocar mock → real backend = mudar `EXPO_PUBLIC_BACKEND_URL`.
 - Services de domínio:
-  - `chatService` / `expenseScanService` — via MCP (LLM)
+  - `chatService` / `expenseScanService` — via AI Gateway (LLM)
   - `timesheetsService` — via `imputationsClient` + `projectsClient` (backend)
   - `expensesService` — via `expensesClient` (backend, contrato especulativo — ver `TODO(expenses-contract)`)
   - `projectsService` — via `projectsClient`, expõe `fetchProjects()` e `fetchTasksForProject(code)` para formulários que precisam de dropdowns de projetos/tarefas
@@ -179,49 +181,74 @@ Tokens centralizados em `src/theme/` (`Colors`, `Spacing`, `Typography`, `Shadow
 ## Feature flags
 Não há flags hoje. O swap mock → real backend é feito via env var `EXPO_PUBLIC_BACKEND_URL` (ver `src/constants/backend.constants.ts`), sem alterar código.
 
-## AI Gateway (`mcp-server/`)
+## AI Gateway (`ai-gateway/`) + MCP server (`mcp/`)
 
-Orquestrador LLM provider-agnostic com 10 tools stateless que delegam no `mock-backend/`. O folder ainda se chama `mcp-server/` por inércia — funcionalmente é um AI Gateway. A separação para um MCP server isolado está prevista (ver memória [[architectural-split-deferred]] e `REFACTOR_PLAN.md` § Phases 7-9).
+Dois processos:
+
+- **`ai-gateway/` (:3001)** — orquestrador LLM provider-agnostic. Expõe `chat/send`, `chat/bootstrap`, `chat/scan` via JSON-RPC 2.0 em `POST /mcp`. Quando o LLM pede uma tool, o gateway atua como cliente MCP e despacha para `mcp/`.
+- **`mcp/` (:3003)** — host das 10 tools, stateless. Expõe `tools/list` e `tools/call` via JSON-RPC 2.0 em `POST /mcp`. Handlers proxiam para `mock-backend/`.
+
+O mobile **só fala com o AI Gateway**. Nunca contacta `mcp/` diretamente. Ver `REFACTOR_PLAN.md` § Phase 7.
 
 ### Arquitetura
+
 ```
-mcp-server/src/
-  config/         ← env validation (zod) + constants
-  providers/      ← LLMProvider interface + AnthropicProvider + OpenAIProvider + factory
-  orchestrator/   ← chatOrchestrator (handleChat/Bootstrap/Scan) + promptBuilder + responseParser
-  tools/          ← ToolRegistry + 10 tool handlers (stateless, delegam ao backend client)
-  backend/        ← fetch wrapper + clients (imputations/projects/expenses) + adapters DTO↔domínio
-  transport/      ← Express router com JSON-RPC 2.0 (POST /mcp)
+ai-gateway/src/
+  config/         ← env (zod): LLM_PROVIDER, keys, PORT, MCP_URL
+  providers/      ← LLMProvider interface + Anthropic + OpenAI + factory
+  orchestrator/   ← chatOrchestrator (send/bootstrap/scan) + promptBuilder + responseParser
+  mcpClient/      ← Cliente JSON-RPC do MCP (listTools, callTool) — usado pelo orchestrator
+  transport/      ← Express router com JSON-RPC 2.0 (POST /mcp, só métodos chat/*)
+  utils/          ← logger + error helpers
+
+mcp/src/
+  config/         ← env (zod): MCP_PORT, BACKEND_URL, BACKEND_USERNAME
+  tools/          ← ToolRegistry + 10 handlers stateless
+  backend/        ← fetch wrapper + clients (imputations/projects/expenses) + adapters
+  transport/      ← Express router com JSON-RPC 2.0 (POST /mcp, só tools/*)
   utils/          ← logger + error helpers
 ```
 
-### Métodos JSON-RPC (POST `/mcp`, porta 3001)
+### Métodos JSON-RPC
+
+**AI Gateway (POST `/mcp`, porta 3001):**
+
 | Método | Input | Output |
 |--------|-------|--------|
-| `chat/send` | `{ messages[], language, userName, imageData? }` | `{ text, suggestions[], actions[] }` |
+| `chat/send` | `{ messages[], language, userName, imageData? }` | `{ text, suggestions[], actions[], toolCalls[], dropdown? }` |
 | `chat/bootstrap` | `{ language, userName }` | `{ messageText, suggestions[] }` |
 | `chat/scan` | `{ base64, mediaType }` | `{ expenseData }` |
+
+**MCP server (POST `/mcp`, porta 3003):**
+
+| Método | Input | Output |
+|--------|-------|--------|
 | `tools/list` | `{}` | `{ tools[] }` |
-| `tools/call` | `{ name, arguments }` | `{ content[] }` |
+| `tools/call` | `{ name, arguments }` | `{ content[], isError? }` |
 
 ### Provider & server swap
-- `LLM_PROVIDER=anthropic|openai` no `.env` do server — client é agnostic
-- O contrato são os 3 métodos `chat/*` via JSON-RPC 2.0 em `/mcp`. Trocar server = mudar `EXPO_PUBLIC_MCP_URL`
+- `LLM_PROVIDER=anthropic|openai` no `.env` do gateway — o orchestrator é agnostic
+- Trocar gateway = mudar `EXPO_PUBLIC_AI_GATEWAY_URL` (mobile)
+- Trocar backend de dados que o `mcp/` atinge = mudar `BACKEND_URL` (`mcp/.env`). Mobile + `mcp/` apontam para o mesmo backend.
 
-### Tools (stateless, delegam ao backend)
+### Tools (stateless, em `mcp/`)
 Timesheets: `getTimesheets`, `createTimesheetEntry`, `editTimesheetEntry`, `deleteTimesheetEntry`.
 Expenses: `getExpenses`, `submitExpense`, `editExpense`, `deleteExpense`.
 Outros: `getProjects`, `getEmployeeInfo`.
 
-Os handlers não têm estado próprio — chamam `mcp-server/src/backend/*Client` (mesmo contrato `/api/v1/...` que o mobile usa) e traduzem DTOs↔shape interno via adapters. `BACKEND_URL` (default `http://localhost:3002`) controla qual backend é alvo — swap mock → real backend é só env-var. `getEmployeeInfo` é derivado de `BACKEND_USERNAME` porque o swagger não expõe `/me` (identidade vem de claim headers).
+Os handlers chamam `mcp/src/backend/*Client` (mesmo contrato `/api/v1/...` que o mobile usa) e traduzem DTOs↔shape interno via adapters. `getEmployeeInfo` é derivado de `BACKEND_USERNAME` porque o swagger não expõe `/me` (identidade vem de claim headers).
 
 ### Contexto do ARMINI — via tools, NUNCA via system prompt
-O ARMINI obtém contexto **exclusivamente via tools** no loop agentic do server. **Nunca injetar dados de stores/contexto do cliente no system prompt nem como parâmetros extra do `chat/send`.** O client envia apenas `messages`, `language`, `userName` e opcionalmente `imageData`.
+O ARMINI obtém contexto **exclusivamente via tools** no loop agentic do gateway. **Nunca injetar dados de stores/contexto do cliente no system prompt nem como parâmetros extra do `chat/send`.** O client envia apenas `messages`, `language`, `userName` e opcionalmente `imageData`.
 
-### Comandos do server
-- `cd mcp-server && npm run dev` — dev mode com hot reload
-- `cd mcp-server && npm run typecheck` — verificação de tipos
-- `cd mcp-server && npm run build` — compilar para dist/
+### Phase 7 outage behavior
+Se `mcp/` cair, o `chat/send` falha com um erro JSON-RPC normal (o gateway propaga). Phase 8 vai introduzir fallback gracioso — chat continua sem tools e o mobile mostra um banner "limited mode". Ver `REFACTOR_PLAN.md` § Phase 8.
+
+### Comandos dos servidores
+- `cd ai-gateway && npm run dev` — AI Gateway em hot reload (porta 3001)
+- `cd ai-gateway && npm run typecheck`
+- `cd mcp && npm run dev` — MCP server em hot reload (porta 3003)
+- `cd mcp && npm run typecheck`
 
 ## Regras de código
 - **Nunca fazer assumptions.** Se houver dúvida, perguntar ao utilizador antes de avançar
@@ -258,5 +285,7 @@ O ARMINI obtém contexto **exclusivamente via tools** no loop agentic do server.
 - `npm run android` / `npm run ios` — build e run
 - `npx tsc --noEmit` — verificação de tipos
 - `cd ../mock-backend && npm run dev` — mock backend (porta 3002)
-- `cd ../mcp-server && npm run dev` — AI Gateway (porta 3001)
-- `cd ../mcp-server && npm run typecheck` — typecheck do Gateway
+- `cd ../mcp && npm run dev` — MCP server (porta 3003)
+- `cd ../ai-gateway && npm run dev` — AI Gateway (porta 3001)
+- `cd ../ai-gateway && npm run typecheck` — typecheck do Gateway
+- `cd ../mcp && npm run typecheck` — typecheck do MCP

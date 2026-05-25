@@ -2,6 +2,8 @@
 
 > Port mobile do Digital Hub da ARMIS Group. Estágio curricular LEI-ISEP, fevereiro a julho 2026.
 
+> **Stale após Phase 7 (refactor plan).** O folder `mcp-server/` foi separado em `ai-gateway/` (chat/LLM) e `mcp/` (host de tools). Diagramas e referências aqui ainda mostram o layout antigo de três processos. O redraw completo está agendado para Phase 9 — ver `armini/CLAUDE.md` § AI Gateway + § MCP server para a vista atual.
+
 ---
 
 ## Índice

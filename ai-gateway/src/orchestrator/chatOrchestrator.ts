@@ -6,7 +6,7 @@ import type {
   ToolDefinitionForProvider,
   ToolResultEntry,
 } from '../providers/types.js';
-import type { ToolRegistry } from '../tools/registry.js';
+import type { McpClient } from '../mcpClient/index.js';
 import { SERVER_DEFAULTS } from '../config/constants.js';
 import {
   buildChatSystemPrompt,
@@ -68,12 +68,15 @@ export interface ScanResult {
 export class ChatOrchestrator {
   constructor(
     private provider: LLMProvider,
-    private toolRegistry?: ToolRegistry,
+    private mcpClient?: McpClient,
   ) {}
 
-  private getToolDefinitions(): ToolDefinitionForProvider[] | undefined {
-    if (!this.toolRegistry) return undefined;
-    const tools = this.toolRegistry.list();
+  private async getToolDefinitions(): Promise<ToolDefinitionForProvider[] | undefined> {
+    if (!this.mcpClient) return undefined;
+    // Phase 7: fetch the catalog on every chat call. No caching — Phase 9
+    // can profile and add it if it shows up in latency. If the MCP server is
+    // unreachable, this throws; graceful fallback is Phase 8.
+    const tools = await this.mcpClient.listTools();
     if (tools.length === 0) return undefined;
     return tools.map((t) => ({
       name: t.name,
@@ -116,8 +119,8 @@ export class ChatOrchestrator {
 
     const systemPrompt = buildChatSystemPrompt(language);
 
-    // Build tool definitions for the provider
-    const toolDefs = this.getToolDefinitions();
+    // Build tool definitions for the provider (fetched from MCP server)
+    const toolDefs = await this.getToolDefinitions();
 
     logger.info(`chat/send: ${messages.length} msgs, lang=${language}, user=${userName}, hasImage=${!!imageData}, tools=${toolDefs?.length ?? 0}`);
 
@@ -158,7 +161,7 @@ export class ChatOrchestrator {
       for (const call of result.toolCalls) {
         logger.info(`chat/send: executing tool ${call.name}`);
         try {
-          const toolResult = await this.toolRegistry!.execute(call.name, call.input);
+          const toolResult = await this.mcpClient!.callTool(call.name, call.input);
           const resultContent = toolResult.content.map((c) => c.text).join('\n');
           toolResults.push({
             toolCallId: call.id,

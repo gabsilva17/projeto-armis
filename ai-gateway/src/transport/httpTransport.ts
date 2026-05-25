@@ -1,6 +1,5 @@
 import { Router, type Request, type Response } from 'express';
 import type { ChatOrchestrator } from '../orchestrator/chatOrchestrator.js';
-import type { ToolRegistry } from '../tools/registry.js';
 import { RPC_ERRORS, rpcError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
@@ -35,10 +34,7 @@ function sendError(
   res.json({ jsonrpc: '2.0', id, error: rpcError(code, message, data) });
 }
 
-export function createMcpRouter(
-  orchestrator: ChatOrchestrator,
-  toolRegistry: ToolRegistry,
-): Router {
+export function createMcpRouter(orchestrator: ChatOrchestrator): Router {
   const router = Router();
 
   router.post('/', async (req: Request, res: Response) => {
@@ -73,27 +69,9 @@ export function createMcpRouter(
           break;
         }
 
-        case 'tools/list': {
-          const tools = toolRegistry.list();
-          sendResult(res, id, { tools });
-          break;
-        }
-
-        case 'tools/call': {
-          const { name, arguments: args } = params as {
-            name: string;
-            arguments: Record<string, unknown>;
-          };
-          if (!name || !toolRegistry.has(name)) {
-            sendError(res, id, RPC_ERRORS.METHOD_NOT_FOUND, `Tool not found: ${name}`);
-            return;
-          }
-          const result = await toolRegistry.execute(name, args ?? {});
-          sendResult(res, id, result);
-          break;
-        }
-
         default:
+          // tools/list and tools/call live on the MCP server (port 3003) now —
+          // see REFACTOR_PLAN.md § Phase 7.
           sendError(res, id, RPC_ERRORS.METHOD_NOT_FOUND, `Unknown method: ${method}`);
       }
     } catch (err) {

@@ -1,9 +1,9 @@
 {
-  "name": "armini-mcp-server",
+  "name": "armini-mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MCP server for ARMINI — provider-agnostic LLM orchestration with mock ARMIS tools",
+  "description": "ARMINI MCP server — JSON-RPC tool host. Stateless: tool handlers proxy to the mock-backend.",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -12,11 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "openai": "^4.85.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
