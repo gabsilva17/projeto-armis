@@ -43,7 +43,30 @@ Estágio curricular LEI-ISEP, fevereiro a julho 2026.
 Use cases principais:
 - Gestão de timesheets (registo, edição, consulta de horas)
 - Submissão de faturas de despesas (incluindo via fotografia com extração automática de dados)
-- AI Companion — chat contextual via MCP server próprio (`mcp-server/`), provider-agnostic (Anthropic/OpenAI)
+- AI Companion — chat contextual via AI Gateway próprio (`mcp-server/`, ver § AI Gateway), provider-agnostic (Anthropic/OpenAI)
+
+## Arquitetura — três processos locais
+
+```
+┌──────────────┐   chat (LLM)        ┌──────────────────────────┐
+│              │ ───────────────────▶│   AI Gateway             │
+│  armini/     │                     │   (mcp-server/, :3001)   │
+│  React       │                     │   JSON-RPC /mcp          │
+│  Native      │                     │   provider-agnostic LLM  │
+│  (Metro)     │                     │   + 10 stateless tools   │
+│              │                     └────────────┬─────────────┘
+│              │                                  │ HTTP /api/v1
+│              │   data (CRUD)                    ▼
+│              │ ───────────────────▶┌──────────────────────────┐
+└──────────────┘                     │   mock-backend (:3002)   │
+                                     │   In-memory Express      │
+                                     │   mirror de swagger.json │
+                                     └──────────────────────────┘
+```
+
+- Mobile lê/escreve dados via **backend client** (`src/services/backend/`) que aponta para `mock-backend/`. Swap mock → .NET real = mudar `EXPO_PUBLIC_BACKEND_URL`.
+- Mobile fala com o **AI Gateway** apenas para chat/scan/bootstrap. O Gateway tem 10 tools stateless que, internamente, chamam o mesmo mock-backend.
+- O folder `mcp-server/` chama-se assim por razões históricas — funcionalmente é um AI Gateway. O carve-out de um MCP server verdadeiro está deferido (ver memória [[architectural-split-deferred]] e `REFACTOR_PLAN.md` § Phase 7).
 
 ## Stack
 - React Native + TypeScript (strict mode)
@@ -54,8 +77,8 @@ Use cases principais:
 - Phosphor Icons (`phosphor-react-native`) com `weight="fill"`
 - `@react-native-community/datetimepicker` para seleção nativa de data nos formulários
 - **i18next** + `react-i18next` + `expo-localization` para internacionalização (EN/PT)
-- API backend: REST .NET Core já existente do Digital Hub
-- MCP Server (`mcp-server/`): Node.js + TypeScript + Express, provider-agnostic (Anthropic/OpenAI), JSON-RPC 2.0 — todas as chamadas LLM passam pelo MCP server
+- API backend (dados): REST .NET Core do Digital Hub (em dev, `mock-backend/` espelha o contrato de `swagger.json`)
+- AI Gateway (`mcp-server/`): Node.js + TypeScript + Express, provider-agnostic (Anthropic/OpenAI), JSON-RPC 2.0 — todas as chamadas LLM passam pelo Gateway
 
 ## Estrutura do projeto
 ```
@@ -156,9 +179,9 @@ Tokens centralizados em `src/theme/` (`Colors`, `Spacing`, `Typography`, `Shadow
 ## Feature flags
 Não há flags hoje. O swap mock → real backend é feito via env var `EXPO_PUBLIC_BACKEND_URL` (ver `src/constants/backend.constants.ts`), sem alterar código.
 
-## MCP Server (`mcp-server/`)
+## AI Gateway (`mcp-server/`)
 
-Servidor MCP próprio que orquestra chamadas LLM de forma provider-agnostic. Vive como pasta irmã do projeto React Native.
+Orquestrador LLM provider-agnostic com 10 tools stateless que delegam no `mock-backend/`. O folder ainda se chama `mcp-server/` por inércia — funcionalmente é um AI Gateway. A separação para um MCP server isolado está prevista (ver memória [[architectural-split-deferred]] e `REFACTOR_PLAN.md` § Phases 7-9).
 
 ### Arquitetura
 ```
@@ -172,7 +195,7 @@ mcp-server/src/
   utils/          ← logger + error helpers
 ```
 
-### Métodos JSON-RPC
+### Métodos JSON-RPC (POST `/mcp`, porta 3001)
 | Método | Input | Output |
 |--------|-------|--------|
 | `chat/send` | `{ messages[], language, userName, imageData? }` | `{ text, suggestions[], actions[] }` |
@@ -192,8 +215,8 @@ Outros: `getProjects`, `getEmployeeInfo`.
 
 Os handlers não têm estado próprio — chamam `mcp-server/src/backend/*Client` (mesmo contrato `/api/v1/...` que o mobile usa) e traduzem DTOs↔shape interno via adapters. `BACKEND_URL` (default `http://localhost:3002`) controla qual backend é alvo — swap mock → real backend é só env-var. `getEmployeeInfo` é derivado de `BACKEND_USERNAME` porque o swagger não expõe `/me` (identidade vem de claim headers).
 
-### Contexto do ARMINI — via MCP tools, NUNCA via system prompt
-O ARMINI obtém contexto **exclusivamente via MCP tools** no loop agentic do server. **Nunca injetar dados de stores/contexto do cliente no system prompt nem como parâmetros extra do `chat/send`.** O client envia apenas `messages`, `language`, `userName` e opcionalmente `imageData`.
+### Contexto do ARMINI — via tools, NUNCA via system prompt
+O ARMINI obtém contexto **exclusivamente via tools** no loop agentic do server. **Nunca injetar dados de stores/contexto do cliente no system prompt nem como parâmetros extra do `chat/send`.** O client envia apenas `messages`, `language`, `userName` e opcionalmente `imageData`.
 
 ### Comandos do server
 - `cd mcp-server && npm run dev` — dev mode com hot reload
@@ -226,7 +249,7 @@ O ARMINI obtém contexto **exclusivamente via MCP tools** no loop agentic do ser
 
 
 ## ⚠️ Restrições importantes
-- Todas as chamadas LLM passam pelo MCP server — o cliente nunca contacta APIs de LLM diretamente
+- Todas as chamadas LLM passam pelo AI Gateway — o cliente nunca contacta APIs de LLM diretamente
 - Não adicionar dependências nativas sem verificar compatibilidade com a versão atual do RN/Expo SDK
 - **Instalar pacotes Expo sempre com `npx expo install <pacote>`**, nunca com `npm install` — o `expo install` resolve automaticamente a versão compatível com o SDK do projeto e evita desalinhamentos de versão
 
@@ -234,5 +257,6 @@ O ARMINI obtém contexto **exclusivamente via MCP tools** no loop agentic do ser
 - `npm start` — Metro bundler
 - `npm run android` / `npm run ios` — build e run
 - `npx tsc --noEmit` — verificação de tipos
-- `cd ../mcp-server && npm run dev` — MCP server em dev mode
-- `cd ../mcp-server && npm run typecheck` — typecheck do server
+- `cd ../mock-backend && npm run dev` — mock backend (porta 3002)
+- `cd ../mcp-server && npm run dev` — AI Gateway (porta 3001)
+- `cd ../mcp-server && npm run typecheck` — typecheck do Gateway
