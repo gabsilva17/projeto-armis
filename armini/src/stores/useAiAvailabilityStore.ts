@@ -1,42 +1,48 @@
 import { create } from 'zustand';
-import { AI_GATEWAY_CONFIG } from '../constants/llm.constants';
+import { aiGatewayHealth } from '../services/api/aiGateway';
 
-// Reachability ping for the AI Gateway. Phase 7 swap: the gateway no longer
-// exposes tools/list (that moved to the MCP server on port 3003), so we ping
-// GET /health instead — a method that still lives on the gateway. Phase 8
-// rebuilds this around a richer chat/health JSON-RPC method that reports
-// MCP reachability separately (online/limited/offline).
+// Reachability state for the AI Gateway *and* the MCP tool host. Driven by
+// the gateway's `chat/health` JSON-RPC method (Phase 8): a single cheap
+// probe reports both surfaces so the mobile UI can distinguish three
+// states — fully online, AI Gateway offline, or AI Gateway online but MCP
+// offline ("limited mode"). The chat banner and boot toast both read this
+// store; nothing else needs to know whether tools are usable.
 
-const PING_TIMEOUT_MS = 3_000;
-const HEALTH_URL = `${AI_GATEWAY_CONFIG.baseUrl}/health`;
+export type ReachabilityStatus = 'unknown' | 'online' | 'offline';
 
 interface AiAvailabilityStore {
-  isOnline: boolean | null;
+  aiGateway: ReachabilityStatus;
+  mcp: ReachabilityStatus;
   lastCheckedAt: number | null;
   isChecking: boolean;
-  check: () => Promise<boolean>;
+  check: () => Promise<void>;
 }
 
 export const useAiAvailabilityStore = create<AiAvailabilityStore>((set, get) => ({
-  isOnline: null,
+  aiGateway: 'unknown',
+  mcp: 'unknown',
   lastCheckedAt: null,
   isChecking: false,
 
   check: async () => {
-    if (get().isChecking) return get().isOnline === true;
+    if (get().isChecking) return;
     set({ isChecking: true });
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
     try {
-      const response = await fetch(HEALTH_URL, { signal: controller.signal });
-      const ok = response.ok;
-      set({ isOnline: ok, lastCheckedAt: Date.now(), isChecking: false });
-      return ok;
+      const result = await aiGatewayHealth();
+      set({
+        aiGateway: 'online',
+        mcp: result.mcp === 'ok' ? 'online' : 'offline',
+        lastCheckedAt: Date.now(),
+        isChecking: false,
+      });
     } catch {
-      set({ isOnline: false, lastCheckedAt: Date.now(), isChecking: false });
-      return false;
-    } finally {
-      clearTimeout(timeoutId);
+      // Couldn't reach the gateway at all — MCP state is unknown from here.
+      set({
+        aiGateway: 'offline',
+        mcp: 'unknown',
+        lastCheckedAt: Date.now(),
+        isChecking: false,
+      });
     }
   },
 }));

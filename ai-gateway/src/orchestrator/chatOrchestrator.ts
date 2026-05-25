@@ -42,6 +42,7 @@ export interface ChatSendResult {
   actions: Array<{ type: string }>;
   toolCalls: ToolCallEntry[];
   dropdown?: ParsedDropdown;
+  toolsAvailable: boolean;
 }
 
 export interface BootstrapParams {
@@ -52,6 +53,7 @@ export interface BootstrapParams {
 export interface BootstrapResult {
   messageText: string;
   suggestions: ParsedSuggestion[];
+  toolsAvailable: boolean;
 }
 
 export interface ScanParams {
@@ -61,6 +63,12 @@ export interface ScanParams {
 
 export interface ScanResult {
   expenseData: Record<string, string | undefined>;
+  toolsAvailable: boolean;
+}
+
+export interface HealthResult {
+  aiGateway: 'ok';
+  mcp: 'ok' | 'offline';
 }
 
 // ── Orchestrator ────────────────────────────────────────────────────
@@ -71,18 +79,35 @@ export class ChatOrchestrator {
     private mcpClient?: McpClient,
   ) {}
 
-  private async getToolDefinitions(): Promise<ToolDefinitionForProvider[] | undefined> {
-    if (!this.mcpClient) return undefined;
-    // Phase 7: fetch the catalog on every chat call. No caching — Phase 9
-    // can profile and add it if it shows up in latency. If the MCP server is
-    // unreachable, this throws; graceful fallback is Phase 8.
+  // Fetches the tool catalog from MCP. Returns:
+  //   - { toolDefs, toolsAvailable: true }  → tools usable
+  //   - { toolDefs: undefined, toolsAvailable: false } → MCP unreachable
+  // The orchestrator can't be constructed without an mcpClient anymore in
+  // practice (index.ts always passes one), but we keep the optional path so
+  // that test harnesses can still spin up a no-tools orchestrator.
+  private async resolveToolCatalog(): Promise<{
+    toolDefs: ToolDefinitionForProvider[] | undefined;
+    toolsAvailable: boolean;
+  }> {
+    if (!this.mcpClient) {
+      return { toolDefs: undefined, toolsAvailable: false };
+    }
     const tools = await this.mcpClient.listTools();
-    if (tools.length === 0) return undefined;
-    return tools.map((t) => ({
-      name: t.name,
-      description: t.description,
-      inputSchema: t.inputSchema,
-    }));
+    if (tools === null) {
+      // MCP unreachable — caller will degrade and add the soft directive.
+      return { toolDefs: undefined, toolsAvailable: false };
+    }
+    if (tools.length === 0) {
+      return { toolDefs: undefined, toolsAvailable: true };
+    }
+    return {
+      toolDefs: tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema,
+      })),
+      toolsAvailable: true,
+    };
   }
 
   async handleChat(params: ChatSendParams): Promise<ChatSendResult> {
@@ -117,12 +142,14 @@ export class ChatOrchestrator {
       }
     }
 
-    const systemPrompt = buildChatSystemPrompt(language);
+    // Build tool definitions for the provider (fetched from MCP server).
+    // If MCP is unreachable we still call the LLM, but with no tool catalog
+    // and a soft system directive telling it to answer from general
+    // knowledge only.
+    const { toolDefs, toolsAvailable } = await this.resolveToolCatalog();
+    const systemPrompt = buildChatSystemPrompt(language, !toolsAvailable);
 
-    // Build tool definitions for the provider (fetched from MCP server)
-    const toolDefs = await this.getToolDefinitions();
-
-    logger.info(`chat/send: ${messages.length} msgs, lang=${language}, user=${userName}, hasImage=${!!imageData}, tools=${toolDefs?.length ?? 0}`);
+    logger.info(`chat/send: ${messages.length} msgs, lang=${language}, user=${userName}, hasImage=${!!imageData}, tools=${toolDefs?.length ?? 0}, toolsAvailable=${toolsAvailable}`);
 
     // Agentic loop — LLM pode chamar tools e receber resultados
     let result: CompletionResult;
@@ -207,15 +234,20 @@ export class ChatOrchestrator {
       actions: parsed.actions,
       toolCalls: executedToolCalls,
       dropdown: parsed.dropdown,
+      toolsAvailable,
     };
   }
 
   async handleBootstrap(params: BootstrapParams): Promise<BootstrapResult> {
     const { language, userName } = params;
 
+    // Bootstrap doesn't use tools, but we still report the flag so the
+    // mobile UI can decide whether to show the limited-mode banner before
+    // the user has typed anything.
+    const toolsAvailable = this.mcpClient ? await this.mcpClient.ping() : false;
     const systemPrompt = buildChatSystemPrompt(language);
 
-    logger.info(`chat/bootstrap: lang=${language}, user=${userName}`);
+    logger.info(`chat/bootstrap: lang=${language}, user=${userName}, toolsAvailable=${toolsAvailable}`);
 
     // Single call — system prompt already asks for [SUGGESTIONS] block
     const result = await this.provider.chatCompletion(
@@ -236,11 +268,11 @@ export class ChatOrchestrator {
       const fallbackSuggestions = parseStartupSuggestions(sugResult.text);
 
       logger.info(`chat/bootstrap: message ${parsed.text.length} chars, ${fallbackSuggestions.length} suggestions (fallback)`);
-      return { messageText: parsed.text, suggestions: fallbackSuggestions };
+      return { messageText: parsed.text, suggestions: fallbackSuggestions, toolsAvailable };
     }
 
     logger.info(`chat/bootstrap: message ${parsed.text.length} chars, ${parsed.suggestions.length} suggestions`);
-    return { messageText: parsed.text, suggestions: parsed.suggestions };
+    return { messageText: parsed.text, suggestions: parsed.suggestions, toolsAvailable };
   }
 
   async handleScan(params: ScanParams): Promise<ScanResult> {
@@ -287,6 +319,15 @@ export class ChatOrchestrator {
       expenseData = { observations: result.text };
     }
 
-    return { expenseData };
+    // chat/scan doesn't call tools, but for shape consistency across the
+    // three methods we report MCP reachability here too.
+    const toolsAvailable = this.mcpClient ? await this.mcpClient.ping() : false;
+
+    return { expenseData, toolsAvailable };
+  }
+
+  async handleHealth(): Promise<HealthResult> {
+    const mcpOk = this.mcpClient ? await this.mcpClient.ping() : false;
+    return { aiGateway: 'ok', mcp: mcpOk ? 'ok' : 'offline' };
   }
 }

@@ -16,9 +16,13 @@
   "fallbackMessage": "I reviewed your last 15 days and noticed a few workdays with no entries. I can help you confirm if those gaps are expected and suggest what to log next. Do you want to review them together?",
   "deleteChat": "Delete chat",
   "chatOptions": "Chat options",
-  "offline": {
+  "aiGatewayOffline": {
     "title": "AI Companion offline",
-    "body": "Can't reach the AI service — chat and data tools are unavailable."
+    "body": "Chat is unavailable. Timesheets and expenses still work."
+  },
+  "mcpOffline": {
+    "title": "Limited mode",
+    "body": "Chat works but can't read or modify your data."
   },
   "inputPlaceholder": "Chat with ARMINI…",
   "sendMessage": "Send message",

@@ -8,6 +8,7 @@ import type {
   McpBootstrapResult,
   McpScanParams,
   McpScanResult,
+  McpHealthResult,
 } from '../../types/mcp.types';
 
 // JSON-RPC client for the AI Gateway (`ai-gateway/`). The envelope is still
@@ -22,6 +23,7 @@ let _requestId = 0;
 export async function aiGatewayCall<T>(
   method: string,
   params: object,
+  options: { timeoutMs?: number } = {},
 ): Promise<T> {
   const request: MCPRequest = {
     jsonrpc: '2.0',
@@ -31,7 +33,10 @@ export async function aiGatewayCall<T>(
   };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), AI_GATEWAY_CONFIG.timeoutMs);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs ?? AI_GATEWAY_CONFIG.timeoutMs,
+  );
 
   try {
     const response = await fetch(BASE_URL, {
@@ -79,4 +84,14 @@ export function aiGatewayBootstrap(params: McpBootstrapParams): Promise<McpBoots
 
 export function aiGatewayScan(params: McpScanParams): Promise<McpScanResult> {
   return aiGatewayCall<McpScanResult>(AI_GATEWAY_METHODS.CHAT_SCAN, params);
+}
+
+// Health probe should never block the UI — use a short timeout so the
+// poll loop snaps to "offline" quickly when the gateway is unreachable.
+const HEALTH_TIMEOUT_MS = 3_000;
+
+export function aiGatewayHealth(): Promise<McpHealthResult> {
+  return aiGatewayCall<McpHealthResult>(AI_GATEWAY_METHODS.CHAT_HEALTH, {}, {
+    timeoutMs: HEALTH_TIMEOUT_MS,
+  });
 }

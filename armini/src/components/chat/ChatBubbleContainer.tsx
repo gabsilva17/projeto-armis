@@ -55,7 +55,16 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
   const [errorExpanded, setErrorExpanded] = useState(false);
   const prevError = useRef(error);
   const { t } = useTranslation('chat');
-  const aiOnline = useAiAvailabilityStore((s) => s.isOnline);
+  const aiGatewayStatus = useAiAvailabilityStore((s) => s.aiGateway);
+  const mcpStatus = useAiAvailabilityStore((s) => s.mcp);
+  // Two banner states (Phase 8): gateway-offline takes precedence over
+  // MCP-offline; "limited mode" only renders when chat itself still works.
+  const banner: 'aiGatewayOffline' | 'mcpOffline' | null =
+    aiGatewayStatus === 'offline'
+      ? 'aiGatewayOffline'
+      : mcpStatus === 'offline'
+        ? 'mcpOffline'
+        : null;
 
   // Colapsar automaticamente quando surge um novo erro
   useEffect(() => {
@@ -188,7 +197,7 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
 
           {/* Body */}
           <View style={styles.body}>
-            {aiOnline === false ? (
+            {banner ? (
               <View
                 style={[
                   styles.offlineBanner,
@@ -199,10 +208,10 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
                 <WarningCircleIcon size={16} color={colors.textPrimary} weight="fill" />
                 <View style={styles.offlineText}>
                   <Text style={[styles.offlineTitle, { color: colors.textPrimary }]}>
-                    {t('offline.title')}
+                    {t(`${banner}.title`)}
                   </Text>
                   <Text style={[styles.offlineBody, { color: colors.textSecondary }]}>
-                    {t('offline.body')}
+                    {t(`${banner}.body`)}
                   </Text>
                 </View>
               </View>

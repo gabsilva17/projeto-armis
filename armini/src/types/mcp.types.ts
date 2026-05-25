@@ -46,6 +46,7 @@ export interface McpChatSendResult {
   actions: McpAction[];
   toolCalls: McpToolCall[];
   dropdown?: McpDropdown;
+  toolsAvailable: boolean;
 }
 
 export interface McpBootstrapParams {
@@ -56,6 +57,7 @@ export interface McpBootstrapParams {
 export interface McpBootstrapResult {
   messageText: string;
   suggestions: McpSuggestion[];
+  toolsAvailable: boolean;
 }
 
 export interface McpScanParams {
@@ -72,6 +74,14 @@ export interface McpScanResult {
     currency?: string;
     observations?: string;
   };
+  toolsAvailable: boolean;
+}
+
+// chat/health — cheap probe of both the AI Gateway and (indirectly) the
+// MCP server. Drives the chat banner / boot toast on the mobile side.
+export interface McpHealthResult {
+  aiGateway: 'ok';
+  mcp: 'ok' | 'offline';
 }
 
 // ── tools/call ──────────────────────────────────────────────────────

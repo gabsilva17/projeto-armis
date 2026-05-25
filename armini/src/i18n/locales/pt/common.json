@@ -36,9 +36,13 @@
     "version": "{{appName}} · v1.0"
   },
   "toast": {
-    "aiOffline": {
+    "aiGatewayOffline": {
       "title": "AI Companion indisponível",
       "body": "Timesheets e despesas continuam a funcionar."
+    },
+    "mcpOffline": {
+      "title": "Modo limitado",
+      "body": "O chat funciona mas não consegue ler nem modificar os seus dados."
     }
   }
 }

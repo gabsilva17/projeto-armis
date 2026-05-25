@@ -125,12 +125,12 @@ Cada store é um ficheiro em `src/stores/`, hook-based, sem Redux/Context pesado
 | `useLanguageStore` | `language` ('en' \| 'pt') | AsyncStorage |
 | `useNavBarStore` | `middleTabs[]` (NavTabId) | AsyncStorage |
 | `useToastStore` | `queue[]` (ToastItem) | Não |
-| `useAiAvailabilityStore` | `isOnline`, `lastCheckedAt`, `isChecking` | Não |
+| `useAiAvailabilityStore` | `aiGateway`, `mcp` (`'unknown' \| 'online' \| 'offline'`), `lastCheckedAt`, `isChecking` | Não |
 
 `useTimesheetsStore` expõe `getMonthData(year, month)` que deriva `MonthSummary` do estado.
 `useNavBarStore` gere quais tabs opcionais aparecem na bottom bar e a sua ordem. Home e More são fixos (primeiro e último). Máximo de 5 tabs no total.
 `useToastStore` enfileira notificações não-bloqueantes. UI consome via `<Toast />` (em `src/components/ui/Toast.tsx`) montado uma vez em `app/_layout.tsx`; auto-dismiss a ~4s e a queue mostra uma mensagem de cada vez. Slide-in via Reanimated `entering`/`exiting` (`FadeInUp`/`FadeOutDown`), posicionado no fundo do ecrã para não interferir com a TopBar nem com o chat modal.
-`useAiAvailabilityStore` faz ping ao AI Gateway (`GET /health`, timeout 3s) no boot e a cada 15s. `_layout.tsx` subscreve transições para `false` e dispara o toast offline. `ChatBubbleContainer` exibe um banner sticky enquanto `isOnline === false`, e refaz `check()` ao abrir o chat para mostrar o estado fresco. (Phase 8 vai rebuildá-lo à volta de `chat/health` para distinguir AI Gateway offline vs. MCP offline.)
+`useAiAvailabilityStore` sonda o AI Gateway via `chat/health` JSON-RPC (timeout 3s) no boot e a cada 15s. O método devolve o estado do próprio gateway *e* o do MCP (a partir do gateway), portanto a store rastreia dois campos independentes (`aiGateway`, `mcp`). `_layout.tsx` subscreve transições e dispara um toast diferente para cada estado degradado (AI Gateway offline ≠ MCP offline). `ChatBubbleContainer` exibe um banner sticky: `aiGateway === 'offline'` mostra "AI Companion offline"; `mcp === 'offline'` (com gateway online) mostra "Limited mode". `check()` também é chamado ao abrir o chat para refrescar imediatamente.
 
 ## Internacionalização (i18n)
 
@@ -215,9 +215,10 @@ mcp/src/
 
 | Método | Input | Output |
 |--------|-------|--------|
-| `chat/send` | `{ messages[], language, userName, imageData? }` | `{ text, suggestions[], actions[], toolCalls[], dropdown? }` |
-| `chat/bootstrap` | `{ language, userName }` | `{ messageText, suggestions[] }` |
-| `chat/scan` | `{ base64, mediaType }` | `{ expenseData }` |
+| `chat/send` | `{ messages[], language, userName, imageData? }` | `{ text, suggestions[], actions[], toolCalls[], dropdown?, toolsAvailable }` |
+| `chat/bootstrap` | `{ language, userName }` | `{ messageText, suggestions[], toolsAvailable }` |
+| `chat/scan` | `{ base64, mediaType }` | `{ expenseData, toolsAvailable }` |
+| `chat/health` | `{}` | `{ aiGateway: 'ok', mcp: 'ok' \| 'offline' }` |
 
 **MCP server (POST `/mcp`, porta 3003):**
 
@@ -241,8 +242,12 @@ Os handlers chamam `mcp/src/backend/*Client` (mesmo contrato `/api/v1/...` que o
 ### Contexto do ARMINI — via tools, NUNCA via system prompt
 O ARMINI obtém contexto **exclusivamente via tools** no loop agentic do gateway. **Nunca injetar dados de stores/contexto do cliente no system prompt nem como parâmetros extra do `chat/send`.** O client envia apenas `messages`, `language`, `userName` e opcionalmente `imageData`.
 
-### Phase 7 outage behavior
-Se `mcp/` cair, o `chat/send` falha com um erro JSON-RPC normal (o gateway propaga). Phase 8 vai introduzir fallback gracioso — chat continua sem tools e o mobile mostra um banner "limited mode". Ver `REFACTOR_PLAN.md` § Phase 8.
+### Degradação graciosa
+- Se `mcp/` cair: o gateway continua a responder `chat/send`/`chat/bootstrap`/`chat/scan` sem catálogo de tools, com uma diretiva soft no system prompt a instruir o LLM a recusar ações de dados. Todas as respostas trazem `toolsAvailable: false`. O mobile mostra um banner "Limited mode" + toast equivalente.
+- Se o próprio `ai-gateway/` cair: `chat/health` (e qualquer outra chamada) falha em fetch; a store marca `aiGateway: 'offline'`, `mcp: 'unknown'`. O mobile mostra o banner "AI Companion offline" e o toast clássico.
+- O `chat/send` agora **não** falha quando só o MCP cai. O JSON-RPC error normal só acontece se o LLM ou o transport falharem.
+
+Métodos extra (Phase 8): o AI Gateway expõe `chat/health` (sem chamada ao LLM, retorna `{ aiGateway: 'ok', mcp: 'ok' | 'offline' }`).
 
 ### Comandos dos servidores
 - `cd ai-gateway && npm run dev` — AI Gateway em hot reload (porta 3001)

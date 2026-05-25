@@ -16,9 +16,13 @@
   "fallbackMessage": "Revi os últimos 15 dias e notei alguns dias úteis sem registos. Posso ajudar a confirmar se essas lacunas são esperadas e sugerir o que registar a seguir. Quer rever juntos?",
   "deleteChat": "Apagar chat",
   "chatOptions": "Opções de chat",
-  "offline": {
+  "aiGatewayOffline": {
     "title": "AI Companion indisponível",
-    "body": "Sem ligação ao serviço de AI — chat e ferramentas de dados estão indisponíveis."
+    "body": "Chat indisponível. Timesheets e despesas continuam a funcionar."
+  },
+  "mcpOffline": {
+    "title": "Modo limitado",
+    "body": "O chat funciona mas não consegue ler nem modificar os seus dados."
   },
   "inputPlaceholder": "Conversar com ARMINI…",
   "sendMessage": "Enviar mensagem",

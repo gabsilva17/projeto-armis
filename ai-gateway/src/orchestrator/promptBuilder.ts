@@ -116,7 +116,12 @@ Rules:
 - Omit any field that cannot be determined.
 - Return ONLY the raw JSON. No extra text.`;
 
-export function buildChatSystemPrompt(language: string): string {
+// Soft instruction injected when the MCP server is unreachable. The agentic
+// loop runs without a tool catalog, so the LLM must answer from general
+// knowledge only and decline any action-y requests instead of pretending.
+const DEGRADED_TOOL_DIRECTIVE = `\n\nThe tool layer is currently unavailable. Answer from general knowledge only. Do not promise to read, modify, or persist any data. If the user asks for an action (logging hours, submitting an expense, looking up their data, etc.), tell them you can't do it right now and ask them to try again later.`;
+
+export function buildChatSystemPrompt(language: string, degraded: boolean = false): string {
   const langName = LANGUAGE_NAMES[language] ?? 'English';
   const langDirective = `\n\nUser language preference: ${langName}. You MUST respond in ${langName}.`;
 
@@ -125,7 +130,7 @@ export function buildChatSystemPrompt(language: string): string {
   const weekday = now.toLocaleDateString('en-US', { weekday: 'long' });
   const dateDirective = `\n\nToday's date: ${todayISO} (${weekday}).`;
 
-  return BASE_SYSTEM_PROMPT + langDirective + dateDirective;
+  return BASE_SYSTEM_PROMPT + langDirective + dateDirective + (degraded ? DEGRADED_TOOL_DIRECTIVE : '');
 }
 
 export function buildScanSystemPrompt(): string {

@@ -33,10 +33,12 @@ SplashScreen.preventAutoHideAsync();
 
 const AI_RECHECK_INTERVAL_MS = 15_000;
 
-function showAiOfflineToast() {
+type DegradedKind = 'aiGatewayOffline' | 'mcpOffline';
+
+function showDegradedToast(kind: DegradedKind) {
   useToastStore.getState().show({
-    title: i18n.t('common:toast.aiOffline.title'),
-    message: i18n.t('common:toast.aiOffline.body'),
+    title: i18n.t(`common:toast.${kind}.title`),
+    message: i18n.t(`common:toast.${kind}.body`),
     variant: 'warning',
   });
 }
@@ -127,15 +129,26 @@ export default function RootLayout() {
     void useTimesheetsStore.getState().load();
     void useFinancesStore.getState().load();
 
-    // Boot ping ao AI Gateway. Mostrar toast imediatamente se offline; e voltar
-    // a sondar periodicamente para apanhar quedas em runtime sem ter de reabrir
-    // a app. Apenas mostra toast em transições para offline para não spammar.
-    let prevOnline: boolean | null = useAiAvailabilityStore.getState().isOnline;
+    // Boot ping ao AI Gateway. Sondamos periodicamente para apanhar quedas
+    // em runtime sem reabrir a app. Mostramos um toast por transição para
+    // cada estado degradado (Phase 8): AI Gateway offline e MCP offline são
+    // notificações distintas, mas cada uma só dispara quando *entramos* nesse
+    // estado — senão o utilizador ficava soterrado em toasts em cada poll.
+    const initial = useAiAvailabilityStore.getState();
+    let prevAiGateway = initial.aiGateway;
+    let prevMcp = initial.mcp;
     const unsubAi = useAiAvailabilityStore.subscribe((state) => {
-      if (state.isOnline === false && prevOnline !== false) {
-        showAiOfflineToast();
+      if (state.aiGateway === 'offline' && prevAiGateway !== 'offline') {
+        showDegradedToast('aiGatewayOffline');
+      } else if (
+        state.aiGateway === 'online' &&
+        state.mcp === 'offline' &&
+        !(prevAiGateway === 'online' && prevMcp === 'offline')
+      ) {
+        showDegradedToast('mcpOffline');
       }
-      prevOnline = state.isOnline;
+      prevAiGateway = state.aiGateway;
+      prevMcp = state.mcp;
     });
     void useAiAvailabilityStore.getState().check();
     const intervalId = setInterval(() => {

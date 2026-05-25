@@ -30,6 +30,7 @@ export const AI_GATEWAY_METHODS = {
   CHAT_SEND: 'chat/send',
   CHAT_BOOTSTRAP: 'chat/bootstrap',
   CHAT_SCAN: 'chat/scan',
+  CHAT_HEALTH: 'chat/health',
 } as const;
 
 // Tool names live on the MCP server, but the LLM still references them by

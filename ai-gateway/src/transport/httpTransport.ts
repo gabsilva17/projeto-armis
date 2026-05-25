@@ -69,6 +69,14 @@ export function createMcpRouter(orchestrator: ChatOrchestrator): Router {
           break;
         }
 
+        case 'chat/health': {
+          // Cheap reachability probe — no LLM call. Returns mcp: ok|offline
+          // so the mobile client can drive the chat banner state.
+          const result = await orchestrator.handleHealth();
+          sendResult(res, id, result);
+          break;
+        }
+
         default:
           // tools/list and tools/call live on the MCP server (port 3003) now —
           // see REFACTOR_PLAN.md § Phase 7.
