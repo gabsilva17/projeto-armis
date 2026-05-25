@@ -1,0 +1,8 @@
+[
+  { "id": "AP", "description": "ARMIS Platform", "managerName": "João Silva", "startDate": "2025-01-01T00:00:00Z", "endDate": "2026-12-31T00:00:00Z", "closureDate": null },
+  { "id": "CP", "description": "Client Portal", "managerName": "Maria Costa", "startDate": "2025-06-01T00:00:00Z", "endDate": "2026-09-30T00:00:00Z", "closureDate": null },
+  { "id": "IT", "description": "Internal Tools", "managerName": "João Silva", "startDate": "2024-09-01T00:00:00Z", "endDate": "2026-12-31T00:00:00Z", "closureDate": null },
+  { "id": "QA", "description": "QA & Testing", "managerName": "Pedro Almeida", "startDate": "2025-01-01T00:00:00Z", "endDate": "2026-12-31T00:00:00Z", "closureDate": null },
+  { "id": "DM", "description": "Data Migration", "managerName": "Maria Costa", "startDate": "2026-01-15T00:00:00Z", "endDate": "2026-07-31T00:00:00Z", "closureDate": null },
+  { "id": "MA", "description": "Mobile App", "managerName": "João Silva", "startDate": "2026-02-01T00:00:00Z", "endDate": "2026-08-31T00:00:00Z", "closureDate": null }
+]

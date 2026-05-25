@@ -1,0 +1,20 @@
+# Root-level ignores for the ARMIS monorepo.
+# Per-project ignores live inside armini/, mcp-server/, and mock-backend/.
+
+# Accidental installs at the repo root (leading slash anchors to root only)
+/node_modules/
+/package-lock.json
+/package.json
+
+# Expo cache at root
+/.expo/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Local env files
+.env
+.env.local
+.env.*.local
