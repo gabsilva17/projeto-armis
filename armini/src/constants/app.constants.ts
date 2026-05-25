@@ -1,11 +1,6 @@
 export const APP_NAME = 'ARMIS';
 export const USER_NAME = 'Gabriel';
 
-// Feature flags — flip to true when backend is ready
-export const FEATURES = {
-  BACKEND_CONNECTED: false,
-} as const;
-
 export const SIDEBAR_WIDTH = 260;
 
 export const ROUTES = {

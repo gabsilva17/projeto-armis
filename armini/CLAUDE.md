@@ -118,8 +118,13 @@ Toda a UI suporta EN e PT via `i18next` + `react-i18next`. Traduções em `src/i
 Todas as chamadas à API ficam em `src/services/`, nunca na UI nem nos stores.
 
 - **Adapters** (`services/adapters/`): convertem payloads externos em modelos internos. Contratos externos tipados e normalizados no adapter. Quando o backend mudar, ajustar primeiro o adapter.
-- **Hierarquia de imports**: UI/stores → services de domínio → adapters/api. UI nunca importa adapters nem api diretamente.
-- Services de domínio: `chatService`, `expenseScanService` (via MCP), `timesheetsService` (mock, switch via `FEATURES.BACKEND_CONNECTED`)
+- **Hierarquia de imports**: UI/stores → services de domínio → backend client/adapters. UI nunca importa o backend client nem os adapters diretamente.
+- **Backend client** (`services/backend/`): cliente tipado para a API .NET (mockada em dev pelo `mock-backend/`). Stores chamam services de domínio, que orquestram o client + adapters. Trocar mock → real backend = mudar `EXPO_PUBLIC_BACKEND_URL`.
+- Services de domínio:
+  - `chatService` / `expenseScanService` — via MCP (LLM)
+  - `timesheetsService` — via `imputationsClient` + `projectsClient` (backend)
+  - `expensesService` — via `expensesClient` (backend, contrato especulativo — ver `TODO(expenses-contract)`)
+- Stores `useTimesheetsStore` e `useFinancesStore` fazem optimistic update + rollback. Em falha, escrevem em `error` (não throw) para o caller subscrever.
 
 ## Sistema de tema
 Tokens centralizados em `src/theme/` (`Colors`, `Spacing`, `Typography`, `Shadows`). Temas definidos em `colors.ts` (`themes` + `THEME_CATALOG`); para adicionar novo tema, atualizar `colors.ts`.
@@ -144,13 +149,7 @@ Tokens centralizados em `src/theme/` (`Colors`, `Spacing`, `Typography`, `Shadow
 - Back button Android gerido em `app/(main)/_layout.tsx`
 
 ## Feature flags
-```ts
-// src/constants/app.constants.ts
-export const FEATURES = {
-  BACKEND_CONNECTED: false,
-};
-```
-- `BACKEND_CONNECTED`: quando `false`, `timesheetsService` devolve dados mock. Ligar quando o backend estiver pronto.
+Não há flags hoje. O swap mock → real backend é feito via env var `EXPO_PUBLIC_BACKEND_URL` (ver `src/constants/backend.constants.ts`), sem alterar código.
 
 ## MCP Server (`mcp-server/`)
 

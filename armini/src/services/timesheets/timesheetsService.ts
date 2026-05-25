@@ -1,7 +1,13 @@
 import type { MonthSummary, TimesheetEntry } from '@/src/types/timesheets';
-import { FEATURES } from '@/src/constants/app.constants';
-import { adaptTimesheetEntries, type TimesheetEntryApi } from '../adapters/timesheetsAdapter';
-import { mcpToolsCall } from '../api/mcp';
+import { BACKEND_AUTH } from '@/src/constants/backend.constants';
+import { imputationsClient } from '../backend/imputationsClient';
+import { projectsClient } from '../backend/projectsClient';
+import {
+  imputationsToTimesheetEntries,
+  timesheetEntryToNewImputation,
+  timesheetEntryToUpdatedImputation,
+  unwrapBooleanResponse,
+} from '../adapters/imputationsAdapter';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,29 +40,97 @@ function buildMonthSummary(year: number, month: number, entries: TimesheetEntry[
   };
 }
 
+// O backend só expõe leituras month-by-month (/imputation/my/{year}/{month}).
+// Phase 3 mantém o contrato "carregar tudo" do store carregando uma janela de
+// meses em paralelo. TODO(month-by-month): mover o store para lazy-load por mês
+// quando o utilizador navegar — alinha-se 1:1 com o endpoint real.
+const FETCH_MONTHS_BACK = 11;
+const FETCH_MONTHS_FORWARD = 1;
+
+function listFetchWindow(reference: Date): Array<{ year: number; month: number }> {
+  const months: Array<{ year: number; month: number }> = [];
+  for (let offset = -FETCH_MONTHS_BACK; offset <= FETCH_MONTHS_FORWARD; offset++) {
+    const d = new Date(reference.getFullYear(), reference.getMonth() + offset, 1);
+    months.push({ year: d.getFullYear(), month: d.getMonth() + 1 });
+  }
+  return months;
+}
+
+// Resolve project description + task name → FKs que o backend exige no DTO de
+// criação. O domínio interno só conhece nomes; a tradução vive aqui em vez do
+// adapter porque envolve I/O. Match case-insensitive trim para tolerar
+// inconsistências de capitalização dos formulários.
+async function resolveProjectTask(
+  projectName: string,
+  taskName: string,
+): Promise<{ projectId: string; taskId: number }> {
+  const normalizedProject = projectName.trim().toLowerCase();
+  const normalizedTask = taskName.trim().toLowerCase();
+
+  const projects = await projectsClient.listMine();
+  const project =
+    projects.find((p) => p.description?.trim().toLowerCase() === normalizedProject) ??
+    projects.find((p) => p.id?.trim().toLowerCase() === normalizedProject);
+  if (!project || !project.id) {
+    throw new Error(`Project "${projectName}" not found in backend.`);
+  }
+
+  const tasks = await projectsClient.listTasks(project.id);
+  const task = tasks.find((t) => t.task?.trim().toLowerCase() === normalizedTask);
+  if (!task) {
+    throw new Error(`Task "${taskName}" not found in project "${projectName}".`);
+  }
+
+  return { projectId: project.id, taskId: task.id };
+}
+
+function parseImputationId(id: string): number {
+  const numeric = Number(id);
+  if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) {
+    throw new Error(`Imputation id must be an integer (received "${id}").`);
+  }
+  return numeric;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * Returns all timesheet entries.
- * Mock phase: fetches from MCP server (single source of truth).
- * When FEATURES.BACKEND_CONNECTED = true, replace with direct API call.
- */
 export async function fetchAllTimesheets(): Promise<TimesheetEntry[]> {
-  if (FEATURES.BACKEND_CONNECTED) {
-    // TODO: replace with real API call
-    throw new Error('Backend not implemented yet');
-  }
+  const months = listFetchWindow(new Date());
+  const results = await Promise.all(
+    months.map(({ year, month }) => imputationsClient.getMonth(year, month)),
+  );
+  return imputationsToTimesheetEntries(results.flat());
+}
 
-  const result = await mcpToolsCall({
-    name: 'getTimesheets',
-    arguments: { startDate: '2000-01-01', endDate: '2099-12-31' },
+export async function createTimesheet(entry: TimesheetEntry): Promise<void> {
+  const { projectId, taskId } = await resolveProjectTask(entry.project, entry.task);
+  const dto = timesheetEntryToNewImputation(entry, {
+    username: BACKEND_AUTH.claims.nameidentifier,
+    projectId,
+    taskId,
   });
+  unwrapBooleanResponse(await imputationsClient.create(dto));
+}
 
-  const text = result.content[0]?.text ?? '[]';
-  const apiEntries = JSON.parse(text) as TimesheetEntryApi[];
-  return adaptTimesheetEntries(apiEntries);
+export async function updateTimesheet(id: string, entry: TimesheetEntry): Promise<void> {
+  const numericId = parseImputationId(id);
+  const { projectId, taskId } = await resolveProjectTask(entry.project, entry.task);
+  const dto = timesheetEntryToUpdatedImputation(
+    { ...entry, id },
+    {
+      username: BACKEND_AUTH.claims.nameidentifier,
+      projectId,
+      taskId,
+    },
+  );
+  unwrapBooleanResponse(await imputationsClient.update(numericId, dto));
+}
+
+export async function deleteTimesheet(id: string): Promise<void> {
+  const numericId = parseImputationId(id);
+  unwrapBooleanResponse(await imputationsClient.remove(numericId));
 }
 
 export { buildMonthSummary };

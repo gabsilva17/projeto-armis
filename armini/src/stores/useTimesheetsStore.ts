@@ -1,7 +1,11 @@
 import { create } from 'zustand';
-import { fetchAllTimesheets, buildMonthSummary } from '../services/timesheets/timesheetsService';
-import { mcpToolsCall } from '../services/api/mcp';
-import { MCP_TOOL_NAMES } from '../constants/llm.constants';
+import {
+  buildMonthSummary,
+  createTimesheet,
+  deleteTimesheet,
+  fetchAllTimesheets,
+  updateTimesheet,
+} from '../services/timesheets/timesheetsService';
 import type { MonthSummary, TimesheetEntry } from '../types/timesheets';
 
 interface TimesheetsStore {
@@ -13,10 +17,14 @@ interface TimesheetsStore {
 
   load: () => Promise<void>;
   refresh: () => Promise<void>;
-  addEntry: (entry: TimesheetEntry) => void;
-  editEntry: (id: string, updates: Partial<TimesheetEntry>) => void;
-  deleteEntry: (id: string) => void;
+  addEntry: (entry: TimesheetEntry) => Promise<void>;
+  editEntry: (id: string, updates: Partial<TimesheetEntry>) => Promise<void>;
+  deleteEntry: (id: string) => Promise<void>;
   getMonthData: (year: number, month: number) => MonthSummary | null;
+}
+
+function toErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export const useTimesheetsStore = create<TimesheetsStore>((set, get) => ({
@@ -33,8 +41,7 @@ export const useTimesheetsStore = create<TimesheetsStore>((set, get) => ({
       const entries = await fetchAllTimesheets();
       set({ allEntries: entries, hasLoaded: true });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to load timesheets.';
-      set({ error: message });
+      set({ error: toErrorMessage(error, 'Failed to load timesheets.') });
     } finally {
       set({ isLoading: false });
     }
@@ -46,38 +53,48 @@ export const useTimesheetsStore = create<TimesheetsStore>((set, get) => ({
       const entries = await fetchAllTimesheets();
       set({ allEntries: entries, hasLoaded: true });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to load timesheets.';
-      set({ error: message });
+      set({ error: toErrorMessage(error, 'Failed to load timesheets.') });
     } finally {
       set({ isRefreshing: false });
     }
   },
 
-  addEntry: (entry) => {
-    set((s) => ({ allEntries: [...s.allEntries, entry] }));
-    // Sincronizar com o MCP server para que o AI veja entradas criadas pela UI
-    mcpToolsCall({
-      name: MCP_TOOL_NAMES.CREATE_TIMESHEET,
-      arguments: { id: entry.id, date: entry.date, project: entry.project, task: entry.task, hours: entry.hours },
-    }).catch(() => {});
+  // Optimistic update + rollback. Após o write o id real vem do backend, por
+  // isso fazemos refresh para reconciliar (o id temporário local é substituído
+  // pelo int devolvido pela próxima fetch do mês).
+  addEntry: async (entry) => {
+    const previous = get().allEntries;
+    set({ allEntries: [...previous, entry], error: null });
+    try {
+      await createTimesheet(entry);
+      await get().refresh();
+    } catch (error: unknown) {
+      set({ allEntries: previous, error: toErrorMessage(error, 'Failed to add timesheet entry.') });
+    }
   },
 
-  editEntry: (id, updates) => {
-    set((s) => ({
-      allEntries: s.allEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)),
-    }));
-    mcpToolsCall({
-      name: MCP_TOOL_NAMES.EDIT_TIMESHEET,
-      arguments: { id, ...updates },
-    }).catch(() => {});
+  editEntry: async (id, updates) => {
+    const previous = get().allEntries;
+    const existing = previous.find((e) => e.id === id);
+    if (!existing) return;
+    const merged: TimesheetEntry = { ...existing, ...updates };
+    set({ allEntries: previous.map((e) => (e.id === id ? merged : e)), error: null });
+    try {
+      await updateTimesheet(id, merged);
+      await get().refresh();
+    } catch (error: unknown) {
+      set({ allEntries: previous, error: toErrorMessage(error, 'Failed to update timesheet entry.') });
+    }
   },
 
-  deleteEntry: (id) => {
-    set((s) => ({ allEntries: s.allEntries.filter((e) => e.id !== id) }));
-    mcpToolsCall({
-      name: MCP_TOOL_NAMES.DELETE_TIMESHEET,
-      arguments: { id },
-    }).catch(() => {});
+  deleteEntry: async (id) => {
+    const previous = get().allEntries;
+    set({ allEntries: previous.filter((e) => e.id !== id), error: null });
+    try {
+      await deleteTimesheet(id);
+    } catch (error: unknown) {
+      set({ allEntries: previous, error: toErrorMessage(error, 'Failed to delete timesheet entry.') });
+    }
   },
 
   getMonthData: (year, month) => {

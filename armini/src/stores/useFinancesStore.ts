@@ -1,31 +1,11 @@
 import { create } from 'zustand';
 import type { ManualExpenseEntry, ManualExpenseForm } from '../types/finances.types';
-import { fetchAllExpenses } from '../services/finances/expensesService';
-import { mcpToolsCall } from '../services/api/mcp';
-import { MCP_TOOL_NAMES } from '../constants/llm.constants';
-
-/** Converte MM/DD/YYYY → YYYY-MM-DD para sincronizar com o MCP server. */
-function toIsoDate(formDate: string): string {
-  const parts = formDate.split('/');
-  if (parts.length === 3) return `${parts[2]}-${parts[0]}-${parts[1]}`;
-  return formDate;
-}
-
-/** Constrói args para o MCP submitExpense/editExpense a partir de um form/entry. */
-function expenseToMcpArgs(entry: ManualExpenseEntry): Record<string, unknown> {
-  return {
-    id: entry.id,
-    date: toIsoDate(entry.date),
-    productiveProject: entry.productiveProject,
-    partnerProject: entry.partnerProject,
-    expenseType: entry.expenseType,
-    quantity: Number(entry.quantity) || 1,
-    unitValue: Number(entry.unitValue) || 0,
-    currency: entry.currency,
-    observations: entry.observations,
-    expenseRepresentation: entry.expenseRepresentation,
-  };
-}
+import {
+  createExpense,
+  deleteExpense,
+  fetchAllExpenses,
+  updateExpense,
+} from '../services/finances/expensesService';
 
 interface FinancesStore {
   entries: ManualExpenseEntry[];
@@ -37,11 +17,24 @@ interface FinancesStore {
 
   load: () => Promise<void>;
   refresh: () => Promise<void>;
-  addEntry: (form: ManualExpenseForm | ManualExpenseEntry) => void;
-  updateEntry: (id: string, form: ManualExpenseForm | ManualExpenseEntry) => void;
-  deleteEntry: (id: string) => void;
+  addEntry: (form: ManualExpenseForm | ManualExpenseEntry) => Promise<void>;
+  updateEntry: (id: string, form: ManualExpenseForm | ManualExpenseEntry) => Promise<void>;
+  deleteEntry: (id: string) => Promise<void>;
   requestScanReceipt: () => void;
   consumeScanReceipt: () => boolean;
+}
+
+function toErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function placeholderEntry(form: ManualExpenseForm | ManualExpenseEntry): ManualExpenseEntry {
+  if ('createdAtLabel' in form && form.id) return form;
+  return {
+    ...form,
+    id: `pending-${Date.now()}`,
+    createdAtLabel: new Date().toLocaleDateString('pt-PT'),
+  };
 }
 
 export const useFinancesStore = create<FinancesStore>((set, get) => ({
@@ -59,8 +52,7 @@ export const useFinancesStore = create<FinancesStore>((set, get) => ({
       const entries = await fetchAllExpenses();
       set({ entries, hasLoaded: true });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to load expenses.';
-      set({ error: message });
+      set({ error: toErrorMessage(error, 'Failed to load expenses.') });
     } finally {
       set({ isLoading: false });
     }
@@ -72,48 +64,52 @@ export const useFinancesStore = create<FinancesStore>((set, get) => ({
       const entries = await fetchAllExpenses();
       set({ entries, hasLoaded: true });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to load expenses.';
-      set({ error: message });
+      set({ error: toErrorMessage(error, 'Failed to load expenses.') });
     } finally {
       set({ isRefreshing: false });
     }
   },
 
-  addEntry: (form) => {
-    const newEntry: ManualExpenseEntry = 'createdAtLabel' in form
-      ? form as ManualExpenseEntry
-      : { ...form, id: String(Date.now()), createdAtLabel: new Date().toLocaleDateString('pt-PT') };
-    set((state) => ({ entries: [newEntry, ...state.entries] }));
-    // Sincronizar com o MCP server para que o AI veja entradas criadas pela UI
-    mcpToolsCall({
-      name: MCP_TOOL_NAMES.SUBMIT_EXPENSE,
-      arguments: expenseToMcpArgs(newEntry),
-    }).catch(() => {});
-  },
-
-  updateEntry: (id, form) => {
-    let updated: ManualExpenseEntry | undefined;
-    set((state) => {
-      const entries = state.entries.map((e) => {
-        if (e.id === id) { updated = { ...e, ...form }; return updated!; }
-        return e;
-      });
-      return { entries };
-    });
-    if (updated) {
-      mcpToolsCall({
-        name: MCP_TOOL_NAMES.EDIT_EXPENSE,
-        arguments: expenseToMcpArgs(updated),
-      }).catch(() => {});
+  // Optimistic insert com id temporário; substitui pelo entry devolvido pelo
+  // backend (que carrega o id canónico) quando o write completar.
+  addEntry: async (form) => {
+    const previous = get().entries;
+    const optimistic = placeholderEntry(form);
+    set({ entries: [optimistic, ...previous], error: null });
+    try {
+      const saved = await createExpense(form);
+      set((state) => ({
+        entries: state.entries.map((e) => (e.id === optimistic.id ? saved : e)),
+      }));
+    } catch (error: unknown) {
+      set({ entries: previous, error: toErrorMessage(error, 'Failed to add expense.') });
     }
   },
 
-  deleteEntry: (id) => {
-    set((state) => ({ entries: state.entries.filter((e) => e.id !== id) }));
-    mcpToolsCall({
-      name: MCP_TOOL_NAMES.DELETE_EXPENSE,
-      arguments: { id },
-    }).catch(() => {});
+  updateEntry: async (id, form) => {
+    const previous = get().entries;
+    const existing = previous.find((e) => e.id === id);
+    if (!existing) return;
+    const merged: ManualExpenseEntry = { ...existing, ...form, id };
+    set({ entries: previous.map((e) => (e.id === id ? merged : e)), error: null });
+    try {
+      const saved = await updateExpense(id, form);
+      set((state) => ({
+        entries: state.entries.map((e) => (e.id === id ? saved : e)),
+      }));
+    } catch (error: unknown) {
+      set({ entries: previous, error: toErrorMessage(error, 'Failed to update expense.') });
+    }
+  },
+
+  deleteEntry: async (id) => {
+    const previous = get().entries;
+    set({ entries: previous.filter((e) => e.id !== id), error: null });
+    try {
+      await deleteExpense(id);
+    } catch (error: unknown) {
+      set({ entries: previous, error: toErrorMessage(error, 'Failed to delete expense.') });
+    }
   },
 
   requestScanReceipt: () => set({ pendingScanReceipt: true }),
