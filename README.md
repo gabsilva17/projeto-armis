@@ -39,34 +39,36 @@ Mobile port of the ARMIS Group Digital Hub. Built as a curricular internship pro
 
 ## Quickstart
 
-Four terminals, in this order:
+First-time setup — install deps in every workspace plus `concurrently` at the root:
 
 ```bash
-# 1. Mock backend (port 3002)
-cd mock-backend
-npm install
-npm run dev
-
-# 2. MCP server (port 3003)
-cd mcp
-npm install
-npm run dev
-
-# 3. AI Gateway (port 3001)
-cd ai-gateway
-npm install
-# create .env with at minimum:
-#   LLM_PROVIDER=anthropic
-#   ANTHROPIC_API_KEY=sk-...
-npm run dev
-
-# 4. Mobile (Metro on 8081)
-cd armini
-npm install
-npm start
+npm install                                    # root (concurrently for the dev script)
+(cd mock-backend && npm install)
+(cd mcp && npm install)
+(cd ai-gateway && npm install)
+(cd armini && npm install)
 ```
 
-A top-level `npm run dev` that orchestrates the three Node services lands in Phase 9.
+Create `ai-gateway/.env` with at least:
+
+```
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-...
+```
+
+Then, two terminals:
+
+```bash
+# Terminal 1 — the three Node services (mock-backend :3002, mcp :3003, ai-gateway :3001)
+npm run dev
+
+# Terminal 2 — Metro for the mobile app (:8081)
+cd armini && npm start
+```
+
+Why two terminals? Metro is interactive (key shortcuts, QR code) and wants its own TTY — `concurrently` would garble it. Kill `Ctrl+C` in either terminal to stop that side cleanly.
+
+If `npm run dev` misbehaves on your shell (rare; prefix coloring can clash with some terminals), fall back to four terminals — one per service plus Metro. Each service has its own `npm run dev` in its workspace.
 
 Each project has its own README/CLAUDE.md with deeper detail.
 
@@ -97,12 +99,18 @@ Each project has its own README/CLAUDE.md with deeper detail.
 ## Typecheck everywhere
 
 ```bash
-(cd armini && npx tsc --noEmit) && \
-(cd ai-gateway && npm run typecheck) && \
-(cd mcp && npm run typecheck) && \
+npm run typecheck     # all four projects in sequence
+```
+
+Or per workspace:
+
+```bash
+(cd armini && npx tsc --noEmit)
+(cd ai-gateway && npm run typecheck)
+(cd mcp && npm run typecheck)
 (cd mock-backend && npm run typecheck)
 ```
 
 ## Refactor history
 
-The four-project layout is the result of the refactor plan in `REFACTOR_PLAN.md`. Phases 1-7 are done. Phase 8 (graceful MCP outage) and Phase 9 (top-level dev story) are next.
+The four-project layout is the result of the refactor plan in `REFACTOR_PLAN.md`. All nine phases are complete as of 2026-05-25.

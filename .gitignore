@@ -1,10 +1,9 @@
 # Root-level ignores for the ARMIS monorepo.
 # Per-project ignores live inside armini/, ai-gateway/, mcp/, and mock-backend/.
 
-# Accidental installs at the repo root (leading slash anchors to root only)
+# Root-level deps (only `concurrently` for the top-level `npm run dev` orchestrator)
 /node_modules/
 /package-lock.json
-/package.json
 
 # Expo cache at root
 /.expo/

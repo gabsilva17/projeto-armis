@@ -1,0 +1,13 @@
+{
+  "name": "armini-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ARMINI monorepo — mobile app (armini/) + AI Gateway (ai-gateway/) + MCP server (mcp/) + mock-backend/. See README.md for the four-process layout.",
+  "scripts": {
+    "dev": "concurrently --names mock,mcp,gateway --prefix-colors blue,magenta,green --kill-others-on-fail \"npm --prefix mock-backend run dev\" \"npm --prefix mcp run dev\" \"npm --prefix ai-gateway run dev\"",
+    "typecheck": "npm --prefix mock-backend run typecheck && npm --prefix mcp run typecheck && npm --prefix ai-gateway run typecheck && npm --prefix armini exec -- tsc --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

@@ -31,11 +31,14 @@ Single endpoint: `POST /mcp` (plus `GET /health` for the mobile boot ping — re
 
 | Method | Input | Output |
 |---|---|---|
-| `chat/send` | `{ messages[], language, userName, imageData? }` | `{ text, suggestions[], actions[], toolCalls[], dropdown? }` |
-| `chat/bootstrap` | `{ language, userName }` | `{ messageText, suggestions[] }` |
-| `chat/scan` | `{ base64, mediaType }` | `{ expenseData }` |
+| `chat/send` | `{ messages[], language, userName, imageData? }` | `{ text, suggestions[], actions[], toolCalls[], dropdown?, toolsAvailable }` |
+| `chat/bootstrap` | `{ language, userName }` | `{ messageText, suggestions[], toolsAvailable }` |
+| `chat/scan` | `{ base64, mediaType }` | `{ expenseData, toolsAvailable }` |
+| `chat/health` | `{}` | `{ aiGateway: 'ok', mcp: 'ok' \| 'offline' }` |
 
 `tools/list` and `tools/call` no longer live here — they were carved out into `../mcp/` (port 3003). POSTing either to this server returns `method-not-found`.
+
+`chat/health` is the cheap reachability probe the mobile app polls on boot and every 15 s. It does not call the LLM; it pings MCP with a short timeout and returns the result. Use this to drive degraded-state UI, not `/health`.
 
 ## Layout
 
@@ -53,8 +56,10 @@ src/
 ## Quick curl reference
 
 ```bash
-# Health (cheap reachability ping — used by mobile boot)
-curl http://localhost:3001/health
+# Health (cheap reachability + MCP status — used by mobile every 15 s)
+curl -X POST -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"chat/health","params":{}}' \
+  http://localhost:3001/mcp
 
 # Bootstrap greeting
 curl -X POST -H 'Content-Type: application/json' \
@@ -71,5 +76,5 @@ curl -X POST -H 'Content-Type: application/json' \
 
 - **No data state.** The gateway holds no domain state. The agentic loop fetches the tool catalog from `mcp/` on every `chat/send`.
 - **Provider swap is one env var.** Switch `LLM_PROVIDER` between `anthropic` and `openai`; the orchestrator doesn't care.
-- **Phase 7 outage behavior.** If `mcp/` is unreachable, `chat/send` currently fails with a JSON-RPC error. Phase 8 will let chat continue without tools and surface a "limited mode" banner on mobile.
+- **Graceful MCP outage.** If `mcp/` is unreachable, `chat/send` still answers the user — it omits the tool catalog and prepends a soft system instruction telling the LLM to answer from general knowledge and refuse data actions. Every response carries `toolsAvailable: boolean` so the mobile UI can show a "limited mode" banner.
 - **Context flows in via tools, not the system prompt.** The mobile app must not stuff store data into `chat/send` params — see `armini/CLAUDE.md` § AI Gateway.

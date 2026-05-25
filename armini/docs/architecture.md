@@ -2,7 +2,7 @@
 
 > Port mobile do Digital Hub da ARMIS Group. Estágio curricular LEI-ISEP, fevereiro a julho 2026.
 
-> **Stale após Phase 7 (refactor plan).** O folder `mcp-server/` foi separado em `ai-gateway/` (chat/LLM) e `mcp/` (host de tools). Diagramas e referências aqui ainda mostram o layout antigo de três processos. O redraw completo está agendado para Phase 9 — ver `armini/CLAUDE.md` § AI Gateway + § MCP server para a vista atual.
+> **Atualizado em 2026-05-25 (Phase 9).** O sistema é hoje um monorepo de quatro processos: `armini/` (mobile), `ai-gateway/` (orquestração LLM), `mcp/` (host de tools) e `mock-backend/` (espelho do contrato .NET). Substituiu o layout anterior `mcp-server/` único — ver `REFACTOR_PLAN.md` para o historial.
 
 ---
 
@@ -13,7 +13,8 @@
    - [Nível 1 — Contexto do Sistema](#21-nível-1--contexto-do-sistema)
    - [Nível 2 — Containers](#22-nível-2--containers)
    - [Nível 3 — Componentes (App Mobile)](#23-nível-3--componentes-app-mobile)
-   - [Nível 3 — Componentes (MCP Server)](#24-nível-3--componentes-mcp-server)
+   - [Nível 3 — Componentes (AI Gateway)](#24-nível-3--componentes-ai-gateway)
+   - [Nível 3 — Componentes (MCP Server)](#25-nível-3--componentes-mcp-server)
 3. [Vistas 4+1](#3-vistas-41)
    - [Vista Lógica](#31-vista-lógica)
    - [Vista de Processos](#32-vista-de-processos)
@@ -34,7 +35,14 @@ O ARMINI é uma aplicação mobile construída em **React Native** com **Expo**,
 - **Submissão de Despesas** — entrada manual ou via fotografia de recibos com extração automática por IA
 - **AI Companion (ARMINI)** — assistente conversacional contextual que integra dados de timesheets, despesas, projetos e perfil do colaborador
 
-A arquitetura segue um modelo **client-server desacoplado**: a app mobile é um cliente leve que delega toda a lógica de IA a um **MCP Server** (Model Context Protocol) próprio. O MCP Server é **provider-agnostic** — abstrai a diferença entre Anthropic (Claude) e OpenAI (GPT), permitindo trocar de fornecedor de LLM sem impacto no cliente.
+A arquitetura é um monorepo de **quatro processos** com responsabilidades isoladas:
+
+- **`armini/`** — cliente mobile React Native (UI, estado, navegação).
+- **`ai-gateway/`** — orquestrador LLM provider-agnostic. Único processo que detém chaves de API de LLM. Abstrai Anthropic (Claude) vs OpenAI (GPT) — trocar provider é mudar 1 env var.
+- **`mcp/`** — host das tools que o LLM pode invocar, exposto via JSON-RPC ("MCP-shaped"). Stateless: cada handler proxia para o backend de dados.
+- **`mock-backend/`** — espelho do contrato OpenAPI do Digital Hub (.NET), em memória. Trocar mock → real = mudar 1 env var em mobile + `mcp/`.
+
+O mobile fala **apenas** com `ai-gateway/` (para chat) e `mock-backend/` (para dados). Nunca contacta `mcp/` diretamente — o gateway é o cliente MCP. Esta separação permite que uma queda do `mcp/` degrade graciosamente o chat (modo "limited") sem afetar a leitura/escrita de dados.
 
 ---
 
@@ -52,25 +60,23 @@ title Diagrama de Contexto do Sistema — ARMINI
 
 Person(employee, "Colaborador ARMIS", "Utiliza a app mobile para gerir horas, despesas e consultar o assistente AI")
 
-System(armini, "ARMINI Mobile App", "Aplicação React Native que serve como hub digital pessoal do colaborador")
+System(armini, "Sistema ARMINI", "Monorepo de 4 processos: mobile + AI Gateway + MCP server + mock backend")
 
-System_Ext(mcpServer, "MCP Server", "Servidor Node.js que orquestra chamadas LLM e disponibiliza tools mock da API ARMIS")
 System_Ext(anthropic, "Anthropic API", "Serviço cloud de LLM (Claude)")
 System_Ext(openai, "OpenAI API", "Serviço cloud de LLM (GPT)")
-System_Ext(digitalHub, "Digital Hub Backend", "API REST .NET Core existente (futuro)")
+System_Ext(digitalHub, "Digital Hub Backend", "API REST .NET Core existente (substituirá o mock-backend)")
 
 Rel(employee, armini, "Usa", "Touch/Gestos")
-Rel(armini, mcpServer, "Envia mensagens, pede bootstrap, scan de recibos", "JSON-RPC 2.0 / HTTP")
-Rel(mcpServer, anthropic, "Envia prompts, recebe completions", "HTTPS")
-Rel(mcpServer, openai, "Envia prompts, recebe completions", "HTTPS")
-Rel_R(mcpServer, digitalHub, "Futuramente: chamadas REST para dados reais", "HTTPS")
+Rel(armini, anthropic, "Prompts LLM (a partir do AI Gateway)", "HTTPS")
+Rel(armini, openai, "Prompts LLM (a partir do AI Gateway)", "HTTPS")
+Rel_R(armini, digitalHub, "Futuramente: chamadas REST do MCP + do mobile substituem o mock-backend", "HTTPS")
 
 @enduml
 ```
 
 **Narrativa:**
 
-O colaborador ARMIS interage exclusivamente com a app mobile. A app nunca contacta APIs de LLM diretamente — toda a comunicação com modelos de linguagem passa pelo MCP Server. Este servidor é o único ponto de contacto com fornecedores de IA e, futuramente, com o backend real do Digital Hub. Atualmente, o MCP Server opera com **dados mock** (fixtures JSON) que simulam a API ARMIS.
+O colaborador interage exclusivamente com a app mobile. Apenas o **AI Gateway** detém credenciais de LLM — o cliente nunca contacta Anthropic/OpenAI diretamente. O **mock-backend** simula o contrato OpenAPI do Digital Hub e será substituído pela API real através de uma mudança de env var em `armini/` e `mcp/`, sem alterações de código.
 
 ---
 
@@ -87,33 +93,42 @@ title Diagrama de Containers — ARMINI
 Person(employee, "Colaborador ARMIS")
 
 System_Boundary(arminiSystem, "Sistema ARMINI") {
-    Container(mobileApp, "ARMINI Mobile App", "React Native / Expo / TypeScript", "UI mobile com gestão de timesheets, despesas e chat AI. Expo Router para navegação file-based.")
-    Container(mcpServer, "MCP Server", "Node.js / Express / TypeScript", "Orquestrador LLM provider-agnostic. Expõe JSON-RPC 2.0 via HTTP. Agentic loop com tool calling.")
-    ContainerDb(asyncStorage, "AsyncStorage", "React Native AsyncStorage", "Persiste preferências do utilizador: mensagens de chat, tema, idioma, tabs de navegação, quick actions.")
-    ContainerDb(fixtures, "Fixtures JSON", "Ficheiros JSON estáticos", "Dados mock que simulam a API ARMIS: timesheets, despesas, projetos, perfil do colaborador.")
+    Container(mobileApp, "ARMINI Mobile App", "React Native / Expo / TypeScript", "UI mobile (Metro :8081). Expo Router. Backend client tipado contra swagger.json.")
+    Container(aiGateway, "AI Gateway", "Node.js / Express / TS (:3001)", "Orquestrador LLM provider-agnostic. JSON-RPC 2.0: chat/send, chat/bootstrap, chat/scan, chat/health. Agentic loop. É cliente MCP.")
+    Container(mcpServer, "MCP Server", "Node.js / Express / TS (:3003)", "Host stateless das 10 tools. JSON-RPC 2.0: tools/list, tools/call. Cada handler proxia para o backend.")
+    Container(mockBackend, "Mock Backend", "Node.js / Express / TS (:3002)", "Espelho em memória do contrato OpenAPI do Digital Hub. Rotas /api/v1/...")
+    ContainerDb(asyncStorage, "AsyncStorage", "React Native AsyncStorage", "Persiste preferências: mensagens de chat, idioma, navbar tabs, quick actions.")
+    ContainerDb(memoryStore, "In-memory store", "JS Maps no mock-backend", "Imputations + projects + tasks + holidays + vacation + (especulativo) expenses. Reinicia ao restart.")
 }
 
 System_Ext(anthropic, "Anthropic API", "Claude Haiku 4.5")
 System_Ext(openai, "OpenAI API", "GPT-4o-mini")
+System_Ext(digitalHub, "Digital Hub Backend", ".NET Core REST API (substituirá o mock)")
 
 Rel(employee, mobileApp, "Usa", "Touch")
-Rel(mobileApp, mcpServer, "chat/send, chat/bootstrap, chat/scan", "JSON-RPC 2.0 / HTTP POST /mcp")
+Rel(mobileApp, aiGateway, "chat/send, chat/bootstrap, chat/scan, chat/health", "JSON-RPC 2.0 / HTTP")
+Rel(mobileApp, mockBackend, "CRUD de timesheets, projetos, despesas", "HTTP /api/v1/...")
+Rel(aiGateway, mcpServer, "tools/list (por chat), tools/call", "JSON-RPC 2.0 / HTTP")
+Rel(mcpServer, mockBackend, "Mesmas rotas /api/v1/... que o mobile", "HTTP")
+Rel(aiGateway, anthropic, "chatCompletion()", "HTTPS")
+Rel(aiGateway, openai, "chatCompletion()", "HTTPS")
 Rel(mobileApp, asyncStorage, "Lê/Escreve estado persistido")
-Rel(mcpServer, fixtures, "Lê dados mock")
-Rel(mcpServer, anthropic, "chatCompletion()", "HTTPS")
-Rel(mcpServer, openai, "chatCompletion()", "HTTPS")
+Rel(mockBackend, memoryStore, "Lê/escreve seeds + mutações")
+Rel_R(mockBackend, digitalHub, "Futuro: substituído por env-var swap (BACKEND_URL)", "HTTPS")
 
 @enduml
 ```
 
 **Narrativa:**
 
-O sistema é composto por dois processos principais:
+O sistema é composto por quatro processos:
 
-1. **Mobile App** — o cliente React Native, que gere toda a UI, estado local (Zustand + AsyncStorage) e comunicação com o MCP Server via JSON-RPC 2.0.
-2. **MCP Server** — o backend de orquestração AI. Recebe pedidos da app, constrói prompts com contexto, executa um **agentic loop** (o LLM pode chamar tools iterativamente), e devolve respostas estruturadas.
+1. **Mobile App** (`armini/`, Metro :8081) — gere UI, estado local (Zustand + AsyncStorage) e comunica com dois servidores: o **AI Gateway** para chat e o **mock-backend** para dados.
+2. **AI Gateway** (`ai-gateway/` :3001) — orquestrador LLM. Recebe pedidos de chat, constrói prompts, executa o **agentic loop** delegando tool calls ao MCP, e devolve respostas estruturadas. Único processo com credenciais LLM. Provider-agnostic.
+3. **MCP Server** (`mcp/` :3003) — host das tools. Stateless: cada handler proxia para o mock-backend através do mesmo contrato `/api/v1/...` que o mobile usa.
+4. **Mock Backend** (`mock-backend/` :3002) — espelho em memória do contrato swagger do Digital Hub. Não persiste — restart = reset aos seeds. Substitui-se pela API real mudando uma env var (`EXPO_PUBLIC_BACKEND_URL` no mobile + `BACKEND_URL` no MCP).
 
-O **AsyncStorage** persiste dados que sobrevivem ao restart da app (mensagens de chat, preferências). Os **Fixtures JSON** são uma camada de dados temporária no servidor que simula respostas de API real até a integração com o Digital Hub.
+O **AsyncStorage** persiste preferências de cliente (mensagens, idioma, tabs). O **AI Gateway é cliente MCP**: nunca chama tools in-process — sempre via HTTP para `mcp/`. Isto isola falhas (`mcp/` em baixo ≠ chat em baixo).
 
 ---
 
@@ -141,13 +156,15 @@ Container_Boundary(mobileApp, "ARMINI Mobile App") {
 
     Component(hooks, "Custom Hooks", "useTimesheets, useCalendarAnimation, useSlideUpModalAnimation, useKeyboard, useTheme", "Hooks de lógica de domínio, animação e acesso a estado.")
 
-    Component(stores, "Zustand Stores", "useChatStore, useTimesheetsStore, useFinancesStore, +6 mais", "9 stores hook-based. 5 persistidos via AsyncStorage. Gestão de estado por domínio.")
+    Component(stores, "Zustand Stores", "useChatStore, useTimesheetsStore, useFinancesStore, useAiAvailabilityStore, useToastStore, +5 mais", "10 stores hook-based. Persistência via AsyncStorage onde aplicável. Inclui useAiAvailabilityStore que rastreia estados independentes de ai-gateway e mcp.")
 
-    Component(services, "Service Layer", "chatService, timesheetsService, expenseScanService", "Lógica de negócio assíncrona. Orquestra chamadas à API e transformação de dados.")
+    Component(services, "Service Layer", "chatService, timesheetsService, expensesService, projectsService, expenseScanService", "Lógica de negócio assíncrona. Orquestra chamadas ao AI Gateway (chat) e ao backend client (dados).")
 
-    Component(adapters, "Adapter Layer", "chatAdapter, timesheetsAdapter", "Transformação entre DTOs da API (MCP) e modelos de domínio internos. Isolamento de contratos externos.")
+    Component(adapters, "Adapter Layer", "chatAdapter, timesheetsAdapter, expensesAdapter", "Transformação entre DTOs externos e modelos internos. ID int↔string, datas, envelopes BooleanFriendlyResponseT.")
 
-    Component(apiClient, "MCP Client", "mcp.ts", "Cliente HTTP genérico para JSON-RPC 2.0. mcpCall<T>() + wrappers tipados por método.")
+    Component(aiGatewayClient, "AI Gateway Client", "src/services/api/aiGateway.ts", "JSON-RPC 2.0 client para o AI Gateway. aiGatewayCall<T>() + wrappers tipados (chat/send, chat/bootstrap, chat/scan, chat/health).")
+
+    Component(backendClient, "Backend Client", "src/services/backend/", "Cliente HTTP tipado contra swagger.json. imputationsClient + projectsClient + expensesClient (especulativo). Headers x-api-key + x-corehub-claims-*.")
 
     Component(theme, "Theme System", "colors, typography, spacing, shadows", "4 temas (light/dark/blue/orange), tokens semânticos, font scale, grid de 4px.")
 
@@ -163,7 +180,8 @@ Rel(chatComponents, hooks, "Usa")
 Rel(hooks, stores, "Lê/Escreve estado")
 Rel(stores, services, "Chama operações async")
 Rel(services, adapters, "Transforma dados")
-Rel(adapters, apiClient, "Usa")
+Rel(adapters, aiGatewayClient, "Usado por chatService / expenseScanService")
+Rel(adapters, backendClient, "Usado por timesheetsService / expensesService / projectsService")
 Rel_R(featureComponents, theme, "Consome tokens")
 Rel_R(featureComponents, i18n, "Consome traduções")
 
@@ -177,71 +195,118 @@ A app segue uma arquitetura em camadas claras:
 - **Router Layer** → define a estrutura de navegação e renderiza layouts. O Expo Router usa convenções de ficheiros para definir rotas, eliminando configuração manual.
 - **Components** → divididos em 4 categorias: navegação (barra superior/inferior/sidebar), chat (o assistente AI), features (calendário, formulários, KPIs) e UI genérica (buttons, cards, fields). Os componentes de feature compõem os de UI, nunca o contrário.
 - **Hooks** → ponte entre a UI e o estado/lógica. Hooks de domínio (useTimesheets) encapsulam lógica complexa; hooks de animação encapsulam setup de Reanimated.
-- **Stores** → Zustand stores hook-based, cada um com responsabilidade bem definida. Sem Redux, sem Context pesado. 5 dos 9 stores são persistidos.
-- **Services** → lógica de negócio pura (async functions), sem dependência de React. Orquestram chamadas à API e delegam transformação aos adapters.
-- **Adapters** → camada de isolamento entre contratos externos (DTOs da API) e modelos internos. Quando o backend mudar, só os adapters precisam de ser ajustados.
-- **API Client** → um único ponto de contacto com o MCP Server. `mcpCall<T>()` genérico com abort controller, timeout e error handling.
+- **Stores** → Zustand stores hook-based, cada um com responsabilidade bem definida. Sem Redux, sem Context pesado. Inclui `useAiAvailabilityStore` que mantém estados independentes para AI Gateway e MCP (driver dos banners "AI Companion offline" vs "Limited mode").
+- **Services** → lógica de negócio pura (async functions), sem dependência de React. Dois grupos: services de chat usam o AI Gateway client; services de dados (timesheets, expenses, projects) usam o backend client.
+- **Adapters** → camada de isolamento entre contratos externos e modelos internos. Quando o backend real chegar, só os adapters precisam de ser ajustados.
+- **AI Gateway Client** → ponto único de contacto com o AI Gateway. `aiGatewayCall<T>()` + wrappers tipados.
+- **Backend Client** → ponto único de contacto com o mock/real backend, contrato `/api/v1/...` do swagger. Trocar mock→real = mudar `EXPO_PUBLIC_BACKEND_URL`.
 
 ---
 
-### 2.4 Nível 3 — Componentes (MCP Server)
+### 2.4 Nível 3 — Componentes (AI Gateway)
 
 ```plantuml
-@startuml C4_Components_Server
+@startuml C4_Components_AIGateway
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
-title Diagrama de Componentes — MCP Server
+title Diagrama de Componentes — AI Gateway (`ai-gateway/`)
 
-Container_Boundary(mcpServer, "MCP Server") {
+Container_Boundary(aiGateway, "AI Gateway (:3001)") {
 
-    Component(transport, "HTTP Transport", "Express Router", "Endpoint POST /mcp. Validação JSON-RPC 2.0. Routing por método (chat/send, chat/bootstrap, chat/scan, tools/list, tools/call).")
+    Component(transport, "HTTP Transport", "Express Router", "Endpoint POST /mcp. Métodos JSON-RPC 2.0: chat/send, chat/bootstrap, chat/scan, chat/health. (tools/* já não vivem aqui.)")
 
-    Component(orchestrator, "Chat Orchestrator", "ChatOrchestrator class", "Agentic loop com até 10 iterações. Gere fluxo LLM → tool call → LLM. handleChat(), handleBootstrap(), handleScan().")
+    Component(orchestrator, "Chat Orchestrator", "ChatOrchestrator", "Agentic loop com até N iterações. Fluxo LLM → tool call → LLM. Fetch do tool catalog via McpClient a cada chat/send. Em outage do MCP, corre sem tools com soft system instruction.")
 
-    Component(promptBuilder, "Prompt Builder", "promptBuilder.ts", "Construção de system prompts. Injeção de idioma, data corrente, identidade ARMINI. Prompt específico para scan de recibos.")
+    Component(promptBuilder, "Prompt Builder", "promptBuilder.ts", "Constrói system prompts: idioma, data corrente, identidade ARMINI. Prompt dedicado para scan de recibos. Soft instruction adicional quando toolsAvailable=false.")
 
-    Component(responseParser, "Response Parser", "responseParser.ts", "Parsing de marcadores [SUGGESTIONS] e [EXPENSE_OPTIONS] no texto LLM. Extração e validação de JSON embebido.")
+    Component(responseParser, "Response Parser", "responseParser.ts", "Parsing de marcadores [SUGGESTIONS] e [EXPENSE_OPTIONS]. Extração e validação de JSON embebido.")
 
-    Component(providerFactory, "Provider Factory", "createProvider()", "Factory pattern. Instancia AnthropicProvider ou OpenAIProvider conforme env.LLM_PROVIDER.")
+    Component(providerFactory, "Provider Factory", "createProvider()", "Instancia AnthropicProvider ou OpenAIProvider conforme env.LLM_PROVIDER.")
 
-    Component(anthropicProvider, "Anthropic Provider", "AnthropicProvider class", "Implementa LLMProvider. Converte mensagens para formato Anthropic. Mapeia tools para tool_use. Preserva rawAssistantMessage para continuidade do agentic loop.")
+    Component(anthropicProvider, "Anthropic Provider", "AnthropicProvider", "Implementa LLMProvider. Adapta para o formato Anthropic, tool_use, preserva rawAssistantMessage.")
 
-    Component(openaiProvider, "OpenAI Provider", "OpenAIProvider class", "Implementa LLMProvider. Converte mensagens para formato OpenAI. Mapeia tools para function calling.")
+    Component(openaiProvider, "OpenAI Provider", "OpenAIProvider", "Implementa LLMProvider. Adapta para function calling do OpenAI.")
 
-    Component(toolRegistry, "Tool Registry", "ToolRegistry class", "Registo e execução de tools. Map<name, {definition, handler}>. Interface ToolDefinition + ToolHandler + ToolResult.")
+    Component(mcpClient, "MCP Client", "src/mcpClient/", "JSON-RPC-over-fetch para o MCP server. listTools() devolve null (não throw) em falha — base da degradação graciosa. callTool(name, args).")
 
-    Component(mockTools, "Mock ARMIS Tools", "8 tool handlers", "getTimesheets, createTimesheetEntry, editTimesheetEntry, deleteTimesheetEntry, getExpenses, submitExpense, getProjects, getEmployeeInfo.")
-
-    Component(fixtureData, "Fixture Data", "JSON files", "timesheets.json, expenses.json, projects.json, employee.json. Dados mock da API ARMIS.")
-
-    Component(config, "Config & Env", "Zod validation", "Validação de env vars em runtime. Constantes de modelo (haiku-4.5, gpt-4o-mini), temperaturas, limites de tokens e iterações.")
+    Component(config, "Config & Env", "Zod validation", "LLM_PROVIDER, ANTHROPIC_API_KEY, OPENAI_API_KEY, PORT, MCP_URL, MCP_TIMEOUT_MS. Constantes de modelo (haiku-4.5, gpt-4o-mini), temperatura, max tokens/iterations.")
 }
 
-Rel(transport, orchestrator, "Delega métodos chat/*")
-Rel(transport, toolRegistry, "Delega métodos tools/*")
+Rel(transport, orchestrator, "Delega chat/* + chat/health")
 Rel(orchestrator, promptBuilder, "Constrói system prompts")
 Rel(orchestrator, responseParser, "Parseia respostas LLM")
 Rel(orchestrator, providerFactory, "Obtém provider")
-Rel(orchestrator, toolRegistry, "Executa tool calls")
+Rel(orchestrator, mcpClient, "listTools() por chat/send + callTool() no loop")
 Rel(providerFactory, anthropicProvider, "Cria se LLM_PROVIDER=anthropic")
 Rel(providerFactory, openaiProvider, "Cria se LLM_PROVIDER=openai")
-Rel(toolRegistry, mockTools, "Regista e invoca handlers")
-Rel(mockTools, fixtureData, "Lê dados mock")
 
 @enduml
 ```
 
 **Narrativa:**
 
-O MCP Server segue uma arquitetura **Clean** com separação clara de responsabilidades:
+O AI Gateway segue uma arquitetura **clean** com a mesma divisão do antigo `mcp-server/`, menos a parte de tools (carved-out para `mcp/`):
 
-- **Transport** → camada HTTP pura. Recebe JSON-RPC 2.0, valida estrutura, roteia para o handler correto, serializa resposta. Não contém lógica de negócio.
-- **Orchestrator** → o coração do servidor. Implementa o **agentic loop**: envia mensagens ao LLM, deteta se o LLM quer chamar tools, executa-as, alimenta o resultado de volta ao LLM, e repete até o LLM dar uma resposta final (ou atingir o limite de 10 iterações).
-- **Prompt Builder** → gera system prompts dinâmicos. Injeta idioma, data, e instruções de comportamento. Prompts diferentes para chat vs. scan de recibos.
-- **Response Parser** → extrai estrutura de texto livre. O LLM responde com marcadores convencionados ([SUGGESTIONS], [EXPENSE_OPTIONS]) que o parser transforma em dados tipados.
-- **Provider Abstraction** → interface `LLMProvider` com método único `chatCompletion()`. Duas implementações concretas (Anthropic, OpenAI) traduzem entre o formato genérico do servidor e o formato específico de cada API. Trocar de provider = mudar 1 variável de ambiente.
-- **Tool Registry** → registo dinâmico de tools com definição (schema JSON) e handler (função async). O LLM recebe as definições como parte do prompt e pode invocar qualquer tool registada.
-- **Mock Tools** → simulam a API ARMIS com dados estáticos. A interface ToolHandler é idêntica à que será usada com chamadas HTTP reais — a transição será transparente.
+- **Transport** → camada HTTP pura. Aceita JSON-RPC 2.0, valida, roteia, serializa. Não tem lógica de negócio.
+- **Orchestrator** → coração do servidor. **Agentic loop**: envia mensagens ao LLM, executa tool calls via MCP, alimenta resultados de volta, repete até resposta final (ou max iterations). Em outage do MCP, corre sem tools e adiciona uma soft instruction ao system prompt para o LLM recusar ações de dados.
+- **Prompt Builder** → gera system prompts dinâmicos (idioma, data, identidade). Prompt separado para scan.
+- **Response Parser** → extrai estrutura de texto livre. Marcadores convencionados (`[SUGGESTIONS]`, `[EXPENSE_OPTIONS]`) → JSON tipado.
+- **Provider Abstraction** → interface `LLMProvider` com `chatCompletion()`. Duas implementações (Anthropic, OpenAI). Swap = 1 env var.
+- **MCP Client** → JSON-RPC-over-fetch que liga ao `mcp/`. Crucial: `listTools()` devolve `null` em falha (não throw). Esta é a base do "limited mode" — o orchestrator vê `null` e corre o agentic loop sem tools.
+
+---
+
+### 2.5 Nível 3 — Componentes (MCP Server)
+
+```plantuml
+@startuml C4_Components_MCP
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Diagrama de Componentes — MCP Server (`mcp/`)
+
+Container_Boundary(mcpServer, "MCP Server (:3003)") {
+
+    Component(transport, "HTTP Transport", "Express Router", "Endpoint POST /mcp. Métodos JSON-RPC 2.0: tools/list, tools/call. (chat/* não vivem aqui.)")
+
+    Component(toolRegistry, "Tool Registry", "ToolRegistry", "Map<name, {definition, handler}>. Lista as 10 tools e despacha tools/call para o handler.")
+
+    Component(timesheetTools, "Timesheet Tools", "4 handlers", "getTimesheets, createTimesheetEntry, editTimesheetEntry, deleteTimesheetEntry.")
+
+    Component(expenseTools, "Expense Tools", "4 handlers (especulativo)", "getExpenses, submitExpense, editExpense, deleteExpense. Tagged // TODO(expenses-contract).")
+
+    Component(miscTools, "Misc Tools", "2 handlers", "getProjects, getEmployeeInfo (deriva de BACKEND_USERNAME — swagger não tem /me).")
+
+    Component(backendClient, "Backend Client", "src/backend/", "fetch wrapper + imputationsClient + projectsClient + expensesClient. Mesmo contrato /api/v1/... que o mobile usa.")
+
+    Component(adapters, "Adapters", "imputationsAdapter, expensesAdapter, projectTaskResolver", "DTO ↔ shape interno. Envelopes BooleanFriendlyResponseT, ID int↔string, datas.")
+
+    Component(config, "Config & Env", "Zod validation", "MCP_PORT, BACKEND_URL, BACKEND_API_KEY, BACKEND_USERNAME, BACKEND_TIMEOUT_MS.")
+}
+
+Container_Ext(mockBackend, "mock-backend (:3002)", "ou Digital Hub real")
+
+Rel(transport, toolRegistry, "Delega tools/list e tools/call")
+Rel(toolRegistry, timesheetTools, "Regista e invoca")
+Rel(toolRegistry, expenseTools, "Regista e invoca")
+Rel(toolRegistry, miscTools, "Regista e invoca")
+Rel(timesheetTools, backendClient, "Usa imputationsClient + projectsClient")
+Rel(expenseTools, backendClient, "Usa expensesClient")
+Rel(miscTools, backendClient, "Usa projectsClient (getProjects)")
+Rel(backendClient, adapters, "Mapeia DTOs")
+Rel(backendClient, mockBackend, "HTTP /api/v1/...")
+
+@enduml
+```
+
+**Narrativa:**
+
+O MCP server é deliberadamente fino:
+
+- **Transport** → idêntico ao do gateway, mas só expõe `tools/list` e `tools/call`. POSTing `chat/*` aqui devolve method-not-found.
+- **Tool Registry** → registo declarativo das 10 tools. Cada tool é um `{definition, handler}`. O catalog devolvido por `tools/list` vai para o LLM como tool schema.
+- **Handlers** → stateless. Recebem args validados, chamam o backend client, devolvem `ToolResult` (sucesso ou erro estruturado). Toda a persistência vive no `mock-backend/` (ou na API real quando ligada).
+- **Backend Client** → simétrico ao do mobile. Mesma URL base (`/api/v1/...`), mesmos headers (`x-api-key`, `x-corehub-claims-*` — stub). Mesma swap-via-env-var.
+- **Adapters** → tradução boundary entre DTOs do contrato e a shape que o LLM consome (e.g., int IDs → string, envelopes desempacotados, datas normalizadas).
 
 ---
 
@@ -297,6 +362,8 @@ package "Application Layer" {
         [useQuickActionsStore]
         [useSidebarStore]
         [useChatLauncherStore]
+        [useToastStore]
+        [useAiAvailabilityStore]
     }
 }
 
@@ -372,52 +439,67 @@ participant "Chat UI" as chatUI
 participant "useChatStore" as chatStore
 participant "chatService" as chatSvc
 participant "chatAdapter" as adapter
-participant "MCP Client" as mcpClient
-participant "MCP Server" as mcpServer
+participant "AI Gateway Client" as gwClient
+participant "AI Gateway" as gw
 participant "LLM Provider" as llm
-participant "Tool Registry" as tools
+participant "MCP Client (no gw)" as mcpClient
+participant "MCP Server" as mcp
+participant "Backend Client (no mcp)" as bClient
+participant "mock-backend" as mock
 
 user -> chatUI : Escreve mensagem e toca Enviar
 chatUI -> chatStore : sendMessage(content)
 chatStore -> chatStore : Cria Message{sender:'user'}\ne adiciona a messages[]
 
 chatStore -> chatSvc : sendMessage(content, history)
-chatSvc -> adapter : adaptHistoryToMcpEntries(history)
+chatSvc -> adapter : adaptHistoryToEntries(history)
 adapter --> chatSvc : ChatHistoryEntry[]
 
-chatSvc -> mcpClient : mcpChatSend({messages, language, userName})
-mcpClient -> mcpServer : POST /mcp\n{jsonrpc:"2.0", method:"chat/send", params}
+chatSvc -> gwClient : aiGatewayChatSend({messages, language, userName})
+gwClient -> gw : POST /mcp\n{method:"chat/send"}
 
-== Agentic Loop (no MCP Server) ==
+== Agentic Loop (no AI Gateway) ==
 
-mcpServer -> llm : chatCompletion(messages, {systemPrompt, tools})
-llm --> mcpServer : CompletionResult{text, toolCalls:[getTimesheets]}
+gw -> mcpClient : listTools()
+mcpClient -> mcp : POST /mcp {method:"tools/list"}
+mcp --> mcpClient : {tools: [10 schemas]}
+mcpClient --> gw : tools[] (ou null em outage → loop sem tools)
 
-mcpServer -> tools : execute("getTimesheets", {startDate, endDate})
-tools --> mcpServer : ToolResult{content: JSON entries}
+gw -> llm : chatCompletion(messages, {systemPrompt, tools})
+llm --> gw : CompletionResult{text, toolCalls:[getTimesheets]}
 
-mcpServer -> mcpServer : Append tool result to messages
+gw -> mcpClient : callTool("getTimesheets", {year, month})
+mcpClient -> mcp : POST /mcp {method:"tools/call"}
+mcp -> bClient : imputationsClient.getMonth(year, month)
+bClient -> mock : GET /api/v1/imputation/my/2026/5
+mock --> bClient : ImputationDto[]
+bClient --> mcp : entries (após adapter)
+mcp --> mcpClient : ToolResult{content: JSON entries}
+mcpClient --> gw : ToolResult
 
-mcpServer -> llm : chatCompletion(messages + tool_result)
-llm --> mcpServer : CompletionResult{text: "Tens 56h em março...\n[SUGGESTIONS]..."}
+gw -> gw : Append tool result às messages
+
+gw -> llm : chatCompletion(messages + tool_result)
+llm --> gw : CompletionResult{text: "Tens 56h em março...\n[SUGGESTIONS]..."}
 
 == Fim do Agentic Loop ==
 
-mcpServer --> mcpClient : {text, suggestions[], actions[], toolCalls[]}
-mcpClient --> chatSvc : McpChatSendResult
+gw --> gwClient : {text, suggestions[], actions[], toolCalls[], toolsAvailable}
+gwClient --> chatSvc : ChatSendResult
 
-chatSvc -> adapter : adaptMcpChatResult(result)
-adapter --> chatSvc : AiResponsePayload{message, suggestions, toolCallMessages}
+chatSvc -> adapter : adaptChatResult(result)
+adapter --> chatSvc : AiResponsePayload
 
 chatSvc --> chatStore : AiResponsePayload
-chatStore -> chatStore : Processa toolCallMessages\n(e.g., addEntry ao timesheetsStore)
-chatStore -> chatStore : Adiciona mensagens AI a messages[]\nAtualiza suggestions[]
+chatStore -> chatStore : Adiciona mensagens AI a messages[]
 
 chatStore --> chatUI : true (sucesso)
 chatUI -> chatUI : Limpa input, mostra resposta
 
 @enduml
 ```
+
+**Nota:** quando o `mcp/` está em baixo, `mcpClient.listTools()` devolve `null` e o agentic loop corre sem catálogo de tools — `toolsAvailable=false` flui de volta até à UI para o banner "Limited mode". Mutações via tool (criar/editar timesheet a partir do chat) deixam de funcionar nesse modo; o utilizador pode ainda fazer CRUD pelo backend client diretamente.
 
 #### 3.2.2 Fluxo de Scan de Recibo
 
@@ -429,8 +511,8 @@ actor Colaborador as user
 participant "Chat UI" as chatUI
 participant "Camera/Picker" as camera
 participant "expenseScanService" as scanSvc
-participant "MCP Client" as mcpClient
-participant "MCP Server" as mcpServer
+participant "AI Gateway Client" as gwClient
+participant "AI Gateway" as gw
 participant "LLM Provider" as llm
 participant "Finances Form" as form
 
@@ -440,15 +522,15 @@ user -> camera : Captura foto do recibo
 camera --> chatUI : base64 image data
 
 chatUI -> scanSvc : scanReceiptImage(base64)
-scanSvc -> mcpClient : mcpScan({base64, mediaType:"image/jpeg"})
-mcpClient -> mcpServer : POST /mcp {method:"chat/scan"}
+scanSvc -> gwClient : aiGatewayChatScan({base64, mediaType:"image/jpeg"})
+gwClient -> gw : POST /mcp {method:"chat/scan"}
 
-mcpServer -> mcpServer : Constrói ContentBlock com imagem
-mcpServer -> llm : chatCompletion([{image}], {scanPrompt})
-llm --> mcpServer : JSON com dados extraídos
+gw -> gw : Constrói ContentBlock com imagem
+gw -> llm : chatCompletion([{image}], {scanPrompt})
+llm --> gw : JSON com dados extraídos
 
-mcpServer --> mcpClient : {expenseData}
-mcpClient --> scanSvc : McpScanResult
+gw --> gwClient : {expenseData, toolsAvailable}
+gwClient --> scanSvc : ChatScanResult
 
 scanSvc -> scanSvc : sanitizeExtractedData()\n• Valida formato de data (DD/MM/YYYY)\n• Normaliza tipo de despesa\n• Valida quantidade (1-1000)\n• Normaliza valor unitário\n• Valida moeda (EUR/USD/GBP)\n• Trunca observações (300 chars)
 
@@ -474,7 +556,9 @@ participant "Zustand Stores" as stores
 participant "AsyncStorage" as storage
 participant "i18n" as i18n
 participant "useChatStore" as chatStore
-participant "MCP Server" as mcpServer
+participant "useAiAvailability\nStore" as aiStore
+participant "AI Gateway" as gw
+participant "MCP Server" as mcp
 
 expo -> rootLayout : Inicia app
 rootLayout -> rootLayout : useFonts(Inter 400/500/600/700)
@@ -482,22 +566,34 @@ rootLayout -> i18n : import (inicializa i18next)
 i18n -> storage : Lê preferência de idioma
 storage --> i18n : 'pt' (ou deteta do dispositivo)
 
-rootLayout -> rootLayout : GestureHandlerRootView\nSafeAreaProvider\nAlertProvider\nStack Router
+rootLayout -> rootLayout : GestureHandlerRootView\nSafeAreaProvider\nAlertProvider\nStack Router\n+ Toast overlay
 
 rootLayout -> mainLayout : Redirect para /(main)/home
 
 mainLayout -> stores : Hidratação automática (persist middleware)
-stores -> storage : Lê chat messages, tema,\nidioma, tabs, quick actions
+stores -> storage : Lê chat messages, idioma,\ntabs, quick actions
 storage --> stores : Estado persistido
 
 mainLayout -> mainLayout : RefreshProvider\nTopBar + BottomNavBar\nProfileSidebar + ChatBubbleContainer
 
-mainLayout -> chatStore : ensureSessionBootstrap()
-chatStore -> mcpServer : chat/bootstrap({language, userName})
-mcpServer --> chatStore : {messageText, suggestions[]}
-chatStore -> chatStore : Cria mensagem de greeting\nPopula suggestions[]
+== Probe AI/MCP (paralelo) ==
 
-mainLayout -> mainLayout : App pronta para interação
+mainLayout -> aiStore : check()
+aiStore -> gw : POST /mcp {method:"chat/health"}
+gw -> mcp : POST /mcp {method:"tools/list"} (timeout curto)
+mcp --> gw : ok | timeout/erro
+gw --> aiStore : {aiGateway:'ok', mcp:'ok'|'offline'}
+aiStore -> aiStore : Atualiza campos (ou marca aiGateway:'offline')
+note right of aiStore : Polling repete a cada 15 s\ne sempre que o chat abre
+
+== Bootstrap do chat (depende do AI Gateway) ==
+
+mainLayout -> chatStore : ensureSessionBootstrap()
+chatStore -> gw : POST /mcp {method:"chat/bootstrap"}
+gw --> chatStore : {messageText, suggestions[], toolsAvailable}
+chatStore -> chatStore : Cria mensagem de greeting
+
+mainLayout -> mainLayout : App pronta. Toasts/banners refletem o estado da store.
 
 @enduml
 ```
@@ -579,21 +675,36 @@ package "armini/ (React Native App)" {
     }
 }
 
-package "mcp-server/ (Node.js)" {
+package "ai-gateway/ (Node.js, :3001)" {
     package "src/" <<Folder>> {
         [config/]
         [providers/]
         [orchestrator/]
-        [tools/]
+        [mcpClient/]
         [transport/]
         [utils/]
         [index.ts]
     }
-    package "fixtures/" <<Folder>> {
-        [timesheets.json]
-        [expenses.json]
-        [projects.json]
-        [employee.json]
+}
+
+package "mcp/ (Node.js, :3003)" {
+    package "src/" <<Folder>> {
+        [config/]
+        [tools/]
+        [backend/ (httpClient + clients + adapters)]
+        [transport/]
+        [utils/]
+        [index.ts]
+    }
+}
+
+package "mock-backend/ (Node.js, :3002)" {
+    package "src/" <<Folder>> {
+        [routes/]
+        [data/ (stores + fixtures)]
+        [types/]
+        [utils/]
+        [index.ts]
     }
 }
 
@@ -602,11 +713,15 @@ package "mcp-server/ (Node.js)" {
 
 **Narrativa:**
 
-O projeto é um **monorepo** com duas aplicações adjacentes:
+O projeto é um **monorepo** com quatro aplicações adjacentes:
 
-1. **armini/** — a app React Native com Expo. Usa file-based routing (pasta `app/`) e uma estrutura `src/` organizada por responsabilidade (components, stores, services, etc.). Cada pasta de componentes é organizada por feature (chat, timesheets, finances) em vez de por tipo técnico (containers, presentational).
+1. **armini/** — a app React Native com Expo. File-based routing (`app/`) e `src/` organizado por responsabilidade (components, stores, services, etc.). Componentes agrupados por feature.
 
-2. **mcp-server/** — o servidor Node.js. Organizado em camadas funcionais: config, providers (abstração LLM), orchestrator (lógica de chat), tools (mock API), transport (HTTP) e utils.
+2. **ai-gateway/** — orquestrador LLM. Camadas funcionais: config, providers (abstração LLM), orchestrator (chat + agentic loop), mcpClient (cliente para `mcp/`), transport (HTTP), utils.
+
+3. **mcp/** — host das tools. config, tools (10 handlers + registry), backend (httpClient + clients + adapters), transport, utils. Stateless.
+
+4. **mock-backend/** — espelho do swagger. routes (uma por recurso), data (stores in-memory + fixtures JSON), types (DTOs derivados do swagger), utils.
 
 **Convenções de organização:**
 - Componentes agrupados por **feature**, não por tipo técnico
@@ -634,9 +749,14 @@ node "Dispositivo Mobile\n(Android/iOS)" as mobile {
 }
 
 node "Servidor de Desenvolvimento\n(Máquina local / VM)" as devServer {
-    artifact "MCP Server\n(Node.js / Express)" as mcpApp
-    artifact "Fixtures JSON" as fixturesNode
-    mcpApp --> fixturesNode : lê dados mock
+    artifact "AI Gateway (:3001)" as gwApp
+    artifact "MCP Server (:3003)" as mcpApp
+    artifact "mock-backend (:3002)" as mockApp
+    artifact "Stores in-memory" as memStore
+
+    gwApp --> mcpApp : JSON-RPC 2.0 /mcp
+    mcpApp --> mockApp : HTTP /api/v1/...
+    mockApp --> memStore : lê/escreve
 }
 
 cloud "Anthropic Cloud" as anthropicCloud {
@@ -651,22 +771,25 @@ cloud "ARMIS Infrastructure\n(Futuro)" as armisCloud {
     artifact "Digital Hub API\n(.NET Core)" as digitalHubAPI
 }
 
-app --> mcpApp : JSON-RPC 2.0\nHTTP POST /mcp\nPort 3001
-mcpApp --> claudeAPI : HTTPS\n(se LLM_PROVIDER=anthropic)
-mcpApp --> gptAPI : HTTPS\n(se LLM_PROVIDER=openai)
-mcpApp ..> digitalHubAPI : Futuro: REST HTTPS\n(substituirá fixtures)
+app --> gwApp : JSON-RPC 2.0 /mcp\nchat/send, chat/bootstrap,\nchat/scan, chat/health
+app --> mockApp : HTTP /api/v1/...\n(timesheets, expenses, projects)
+gwApp --> claudeAPI : HTTPS (se LLM_PROVIDER=anthropic)
+gwApp --> gptAPI : HTTPS (se LLM_PROVIDER=openai)
+mockApp ..> digitalHubAPI : Futuro: swap por env var\n(BACKEND_URL no mobile + mcp)
 
 @enduml
 ```
 
 **Narrativa:**
 
-Em desenvolvimento, o MCP Server corre na máquina local (ou numa VM na mesma rede). A app mobile conecta-se via IP da rede local. Em produção futura, o MCP Server seria deployado num servidor acessível pela internet, e os fixtures seriam substituídos por chamadas HTTP reais ao Digital Hub.
+Em desenvolvimento, os três processos Node correm na máquina local (mesmo PC, portas 3001/3002/3003). A app mobile conecta-se via IP da rede local (Metro injeta-o automaticamente). Em produção, o `mock-backend/` é substituído pelo Digital Hub real através de env vars em `armini/` e `mcp/` — sem alterações de código.
 
 **Comunicação:**
-- **App → MCP Server**: HTTP não encriptado em desenvolvimento (rede local, port 3001). Em produção seria HTTPS.
-- **MCP Server → LLM**: Sempre HTTPS. A escolha do provider é configurada por variável de ambiente (`LLM_PROVIDER`).
-- **MCP Server → Digital Hub**: Futuro. Os tool handlers dos fixtures serão substituídos por clientes HTTP que chamam a API REST real.
+- **App → AI Gateway** (port 3001): JSON-RPC 2.0 sobre HTTP em dev; HTTPS em produção. Inclui `chat/health` para a UI saber o estado dos servidores.
+- **App → mock-backend** (port 3002): HTTP REST `/api/v1/...`. Substituído pelo Digital Hub real via `EXPO_PUBLIC_BACKEND_URL`.
+- **AI Gateway → MCP Server** (port 3003): JSON-RPC 2.0. Falha aqui = "Limited mode" no mobile (chat sem tools).
+- **MCP Server → mock-backend** (port 3002): mesmo endpoint que o mobile usa. Trocar para o Digital Hub real via `BACKEND_URL` no `.env` do MCP.
+- **AI Gateway → LLM**: sempre HTTPS. `LLM_PROVIDER` controla qual.
 
 ---
 
@@ -713,8 +836,8 @@ rectangle "ARMINI Mobile App" {
     }
 }
 
-rectangle "MCP Server" as mcpBox {
-    usecase "Orquestrar chamada\nLLM com tools" as UC_MCP1
+rectangle "AI Gateway + MCP" as mcpBox {
+    usecase "Orquestrar chamada\nLLM com tools\n(agentic loop)" as UC_MCP1
     usecase "Extrair dados\nde recibo (vision)" as UC_MCP2
 }
 
@@ -753,7 +876,7 @@ Os use cases dividem-se em 4 grupos:
 3. **AI Companion** — conversação livre, consulta de dados (timesheets, projetos, perfil) via linguagem natural, e sugestões contextuais que o LLM gera em cada resposta.
 4. **Personalização** — configuração da experiência (tema, idioma, tabs da navbar, quick actions).
 
-Os use cases que envolvem IA (UC5, UC7-UC11) delegam ao MCP Server, que por sua vez usa o agentic loop para resolver o pedido. Todos os outros operam localmente na app.
+Os use cases que envolvem IA (UC5, UC7-UC11) delegam ao **AI Gateway**, que executa o agentic loop e delega tool calls ao **MCP server**. Os de leitura/escrita pura de dados (UC1-UC4, UC6) vão diretos do mobile ao **mock-backend** sem passar por IA.
 
 ---
 
@@ -773,13 +896,16 @@ Zustand é **minimal e hook-native**. Cada store é uma função que retorna est
 
 **Cross-store communication** existe apenas num caso: `useChatStore` chama `useTimesheetsStore.getState().addEntry()` quando o AI cria uma entrada de timesheet via tool call. Usa `getState()` (acesso imperativo) em vez de subscribe para evitar dependências circulares.
 
-### 4.3 Porquê um MCP Server separado?
+### 4.3 Porquê quatro processos separados (mobile + AI Gateway + MCP + mock-backend)?
 
-Três razões:
+Quatro razões, uma por boundary:
 
-1. **Segurança** — API keys de LLM nunca chegam ao cliente. O server é o único que possui credenciais.
-2. **Provider-agnostic** — trocar de Anthropic para OpenAI (ou vice-versa) é mudar 1 variável de ambiente. O cliente não sabe nem precisa saber que LLM está a ser usado.
-3. **Agentic loop** — o server pode executar múltiplas iterações LLM→tool→LLM antes de responder. Isto seria impraticável no cliente (latência, bateria, complexidade).
+1. **Mobile separado do AI Gateway — segurança e provider-swap.** API keys de LLM nunca chegam ao cliente. O Gateway é o único processo com credenciais. Trocar Anthropic↔OpenAI é mudar 1 env var no Gateway; o cliente nem sabe.
+2. **AI Gateway separado do MCP — isolamento de falhas e responsabilidades.** Antes, um `mcp-server/` único punha LLM e tools no mesmo processo: qualquer falha derrubava tudo. Separando, uma queda do `mcp/` deixa o chat responder em "limited mode" (sem tools) e a leitura/escrita de dados não é afetada. Tornar o Gateway um cliente MCP HTTP também abre a porta a substituir o `mcp/` por um servidor MCP-protocol completo no futuro.
+3. **MCP separado do backend — stateless e testável.** O `mcp/` não detém estado, só schemas + handlers. Cada handler é uma chamada HTTP fina ao backend. O agentic loop fica isolado dos detalhes de persistência.
+4. **mock-backend separado de tudo — fonte única de verdade.** Mobile e MCP atingem o mesmo endpoint `/api/v1/...`. Swap mock→real = mudar `BACKEND_URL` nos dois consumidores. O contrato em `swagger.json` é a referência canónica.
+
+Decisão preservada: **agentic loop server-side**, não no cliente. Múltiplas iterações LLM→tool→LLM seriam impraticáveis em mobile (latência, bateria, complexidade).
 
 ### 4.4 Porquê JSON-RPC 2.0?
 
@@ -915,12 +1041,14 @@ rectangle "In-Memory (efémero)" as ephemeral #fff3cd {
     }
 }
 
-rectangle "MCP Server (fonte de verdade futura)" as server #d1ecf1 {
-    (Fixtures JSON\n→ futuramente API REST)
+rectangle "Servidores externos" as server #d1ecf1 {
+    (mock-backend → Digital Hub real)
+    (AI Gateway → Anthropic / OpenAI)
 }
 
-tss ..> server : fetchAllTimesheets()
-cs ..> server : chat/send, chat/bootstrap
+tss ..> server : backend client\n(GET/POST /api/v1/imputation/my/...)
+fs ..> server : backend client\n(/api/v1/expense/my/... — especulativo)
+cs ..> server : aiGatewayCall\n(chat/send, chat/bootstrap)
 
 @enduml
 ```

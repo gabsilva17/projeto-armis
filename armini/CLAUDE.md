@@ -288,9 +288,14 @@ Métodos extra (Phase 8): o AI Gateway expõe `chat/health` (sem chamada ao LLM,
 ## Comandos
 - `npm start` — Metro bundler
 - `npm run android` / `npm run ios` — build e run
-- `npx tsc --noEmit` — verificação de tipos
-- `cd ../mock-backend && npm run dev` — mock backend (porta 3002)
-- `cd ../mcp && npm run dev` — MCP server (porta 3003)
-- `cd ../ai-gateway && npm run dev` — AI Gateway (porta 3001)
-- `cd ../ai-gateway && npm run typecheck` — typecheck do Gateway
-- `cd ../mcp && npm run typecheck` — typecheck do MCP
+- `npx tsc --noEmit` — verificação de tipos (só o mobile)
+- **Backend stack inteira em paralelo (no root do monorepo):**
+  - `cd .. && npm run dev` — sobe `mock-backend`, `mcp` e `ai-gateway` juntos via `concurrently`. Metro continua a precisar de um terminal próprio.
+  - `cd .. && npm run typecheck` — typecheck dos quatro projetos em sequência.
+- Por serviço (quando preciso correr só um):
+  - `cd ../mock-backend && npm run dev` — mock backend (porta 3002)
+  - `cd ../mcp && npm run dev` — MCP server (porta 3003)
+  - `cd ../ai-gateway && npm run dev` — AI Gateway (porta 3001)
+  - `cd ../ai-gateway && npm run typecheck` — typecheck do Gateway
+  - `cd ../mcp && npm run typecheck` — typecheck do MCP
+  - `cd ../mock-backend && npm run typecheck` — typecheck do mock-backend
