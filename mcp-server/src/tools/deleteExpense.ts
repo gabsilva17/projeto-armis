@@ -1,5 +1,7 @@
 import type { ToolDefinition, ToolHandler, ToolResult } from './types.js';
-import { findById, remove } from './expenseStore.js';
+import { expensesClient } from '../backend/expensesClient.js';
+import { expenseDtoToEntry } from '../backend/expensesAdapter.js';
+import { BackendError } from '../backend/httpClient.js';
 
 export const deleteExpenseDefinition: ToolDefinition = {
   name: 'deleteExpense',
@@ -17,24 +19,44 @@ export const deleteExpenseDefinition: ToolDefinition = {
 export const deleteExpenseHandler: ToolHandler = async (args): Promise<ToolResult> => {
   const { id } = args as { id: string };
 
-  const existing = findById(id);
-  if (!existing) {
+  try {
+    let existingDto;
+    try {
+      existingDto = await expensesClient.getById(id);
+    } catch (err) {
+      if (err instanceof BackendError && err.status === 404) {
+        return {
+          content: [{ type: 'text', text: `Error: expense entry "${id}" not found.` }],
+          isError: true,
+        };
+      }
+      throw err;
+    }
+
+    const existing = expenseDtoToEntry(existingDto);
+    if (existing.status === 'approved') {
+      return {
+        content: [{ type: 'text', text: `Error: cannot delete an approved entry ("${id}"). Only draft or pending entries can be deleted.` }],
+        isError: true,
+      };
+    }
+
+    const res = await expensesClient.remove(id);
+    if (!res.content) {
+      return {
+        content: [{ type: 'text', text: `Error: ${res.message ?? 'Backend rejected the expense delete.'}` }],
+        isError: true,
+      };
+    }
+
     return {
-      content: [{ type: 'text', text: `Error: expense entry "${id}" not found.` }],
+      content: [{ type: 'text', text: JSON.stringify({ id, deleted: true }) }],
+    };
+  } catch (err) {
+    const message = err instanceof BackendError ? err.message : 'Failed to delete expense entry';
+    return {
+      content: [{ type: 'text', text: `Error: ${message}` }],
       isError: true,
     };
   }
-
-  if (existing.status === 'approved') {
-    return {
-      content: [{ type: 'text', text: `Error: cannot delete an approved entry ("${id}"). Only draft or pending entries can be deleted.` }],
-      isError: true,
-    };
-  }
-
-  remove(id);
-
-  return {
-    content: [{ type: 'text', text: JSON.stringify({ id, deleted: true }) }],
-  };
 };

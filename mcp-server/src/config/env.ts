@@ -8,6 +8,12 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   PORT: z.coerce.number().default(3001),
+  // Backend client targets the mock-backend by default. Swap to the real .NET
+  // Digital Hub by setting BACKEND_URL — no code change.
+  BACKEND_URL: z.string().url().default('http://localhost:3002'),
+  BACKEND_API_KEY: z.string().default('dev-mock-key'),
+  BACKEND_USERNAME: z.string().default('gabriel'),
+  BACKEND_TIMEOUT_MS: z.coerce.number().default(30_000),
 });
 
 const parsed = envSchema.safeParse(process.env);

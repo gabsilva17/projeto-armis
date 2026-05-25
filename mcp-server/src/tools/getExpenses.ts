@@ -1,5 +1,7 @@
 import type { ToolDefinition, ToolHandler, ToolResult } from './types.js';
-import { getAll } from './expenseStore.js';
+import { expensesClient } from '../backend/expensesClient.js';
+import { expenseDtoToEntry } from '../backend/expensesAdapter.js';
+import { BackendError } from '../backend/httpClient.js';
 
 export const getExpensesDefinition: ToolDefinition = {
   name: 'getExpenses',
@@ -21,13 +23,22 @@ export const getExpensesHandler: ToolHandler = async (args): Promise<ToolResult>
     status?: string;
   };
 
-  let expenses = getAll();
+  try {
+    const dtos = await expensesClient.listMine();
+    let expenses = dtos.map(expenseDtoToEntry);
 
-  if (startDate) expenses = expenses.filter((e) => e.date >= startDate);
-  if (endDate) expenses = expenses.filter((e) => e.date <= endDate);
-  if (status) expenses = expenses.filter((e) => e.status === status);
+    if (startDate) expenses = expenses.filter((e) => e.date >= startDate);
+    if (endDate) expenses = expenses.filter((e) => e.date <= endDate);
+    if (status) expenses = expenses.filter((e) => e.status === status);
 
-  return {
-    content: [{ type: 'text', text: JSON.stringify(expenses, null, 2) }],
-  };
+    return {
+      content: [{ type: 'text', text: JSON.stringify(expenses, null, 2) }],
+    };
+  } catch (err) {
+    const message = err instanceof BackendError ? err.message : 'Failed to fetch expenses';
+    return {
+      content: [{ type: 'text', text: `Error: ${message}` }],
+      isError: true,
+    };
+  }
 };

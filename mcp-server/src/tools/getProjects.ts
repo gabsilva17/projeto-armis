@@ -1,26 +1,7 @@
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import type { ToolDefinition, ToolHandler, ToolResult } from './types.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-interface Project {
-  id: string;
-  name: string;
-  code: string;
-  active: boolean;
-}
-
-let cachedProjects: Project[] | null = null;
-
-function loadProjects(): Project[] {
-  if (!cachedProjects) {
-    const raw = readFileSync(join(__dirname, 'fixtures', 'projects.json'), 'utf-8');
-    cachedProjects = JSON.parse(raw) as Project[];
-  }
-  return cachedProjects;
-}
+import { projectsClient } from '../backend/projectsClient.js';
+import { projectDtoToSummary } from '../backend/imputationsAdapter.js';
+import { BackendError } from '../backend/httpClient.js';
 
 export const getProjectsDefinition: ToolDefinition = {
   name: 'getProjects',
@@ -35,12 +16,20 @@ export const getProjectsDefinition: ToolDefinition = {
 
 export const getProjectsHandler: ToolHandler = async (args): Promise<ToolResult> => {
   const { activeOnly = true } = args as { activeOnly?: boolean };
-  let projects = loadProjects();
-  if (activeOnly) {
-    projects = projects.filter((p) => p.active);
-  }
 
-  return {
-    content: [{ type: 'text', text: JSON.stringify(projects, null, 2) }],
-  };
+  try {
+    const dtos = await projectsClient.listMine();
+    let projects = dtos.map(projectDtoToSummary);
+    if (activeOnly) projects = projects.filter((p) => p.active);
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(projects, null, 2) }],
+    };
+  } catch (err) {
+    const message = err instanceof BackendError ? err.message : 'Failed to fetch projects';
+    return {
+      content: [{ type: 'text', text: `Error: ${message}` }],
+      isError: true,
+    };
+  }
 };

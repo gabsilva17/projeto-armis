@@ -124,6 +124,7 @@ Todas as chamadas à API ficam em `src/services/`, nunca na UI nem nos stores.
   - `chatService` / `expenseScanService` — via MCP (LLM)
   - `timesheetsService` — via `imputationsClient` + `projectsClient` (backend)
   - `expensesService` — via `expensesClient` (backend, contrato especulativo — ver `TODO(expenses-contract)`)
+  - `projectsService` — via `projectsClient`, expõe `fetchProjects()` e `fetchTasksForProject(code)` para formulários que precisam de dropdowns de projetos/tarefas
 - Stores `useTimesheetsStore` e `useFinancesStore` fazem optimistic update + rollback. Em falha, escrevem em `error` (não throw) para o caller subscrever.
 
 ## Sistema de tema
@@ -161,7 +162,8 @@ mcp-server/src/
   config/         ← env validation (zod) + constants
   providers/      ← LLMProvider interface + AnthropicProvider + OpenAIProvider + factory
   orchestrator/   ← chatOrchestrator (handleChat/Bootstrap/Scan) + promptBuilder + responseParser
-  tools/          ← ToolRegistry + 6 tools fictícias (mock ARMIS API) + fixtures JSON
+  tools/          ← ToolRegistry + 10 tool handlers (stateless, delegam ao backend client)
+  backend/        ← fetch wrapper + clients (imputations/projects/expenses) + adapters DTO↔domínio
   transport/      ← Express router com JSON-RPC 2.0 (POST /mcp)
   utils/          ← logger + error helpers
 ```
@@ -179,8 +181,12 @@ mcp-server/src/
 - `LLM_PROVIDER=anthropic|openai` no `.env` do server — client é agnostic
 - O contrato são os 3 métodos `chat/*` via JSON-RPC 2.0 em `/mcp`. Trocar server = mudar `EXPO_PUBLIC_MCP_URL`
 
-### Tools fictícias (mock ARMIS API)
-`getTimesheets`, `createTimesheetEntry`, `getExpenses`, `submitExpense`, `getProjects`, `getEmployeeInfo` — leem de `fixtures/*.json`. Substituir por HTTP calls quando a API real estiver disponível.
+### Tools (stateless, delegam ao backend)
+Timesheets: `getTimesheets`, `createTimesheetEntry`, `editTimesheetEntry`, `deleteTimesheetEntry`.
+Expenses: `getExpenses`, `submitExpense`, `editExpense`, `deleteExpense`.
+Outros: `getProjects`, `getEmployeeInfo`.
+
+Os handlers não têm estado próprio — chamam `mcp-server/src/backend/*Client` (mesmo contrato `/api/v1/...` que o mobile usa) e traduzem DTOs↔shape interno via adapters. `BACKEND_URL` (default `http://localhost:3002`) controla qual backend é alvo — swap mock → real backend é só env-var. `getEmployeeInfo` é derivado de `BACKEND_USERNAME` porque o swagger não expõe `/me` (identidade vem de claim headers).
 
 ### Contexto do ARMINI — via MCP tools, NUNCA via system prompt
 O ARMINI obtém contexto **exclusivamente via MCP tools** no loop agentic do server. **Nunca injetar dados de stores/contexto do cliente no system prompt nem como parâmetros extra do `chat/send`.** O client envia apenas `messages`, `language`, `userName` e opcionalmente `imageData`.

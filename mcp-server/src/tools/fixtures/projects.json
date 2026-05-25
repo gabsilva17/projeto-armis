@@ -1,9 +1,0 @@
-[
-  { "id": "proj001", "name": "ARMIS Platform", "code": "AP", "active": true },
-  { "id": "proj002", "name": "Client Portal", "code": "CP", "active": true },
-  { "id": "proj003", "name": "Internal Tools", "code": "IT", "active": true },
-  { "id": "proj004", "name": "QA & Testing", "code": "QA", "active": true },
-  { "id": "proj005", "name": "Data Migration", "code": "DM", "active": true },
-  { "id": "proj006", "name": "Mobile App", "code": "MA", "active": true },
-  { "id": "proj007", "name": "Legacy Maintenance", "code": "LM", "active": false }
-]

@@ -4,6 +4,12 @@ import { TextField } from '@/src/components/ui/TextField';
 import { Colors, Spacing, Typography, useTheme } from '@/src/theme';
 import { HIT_SLOP } from '@/src/constants/ui.constants';
 import { useSlideUpModalAnimation } from '@/src/hooks/useSlideUpModalAnimation';
+import {
+  fetchProjects,
+  fetchTasksForProject,
+  type ProjectOption,
+  type TaskOption,
+} from '@/src/services/projects/projectsService';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Animated,
@@ -34,8 +40,6 @@ interface EntryFormModalProps {
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MAX_PROJECT_LENGTH = 80;
-const MAX_TASK_LENGTH = 120;
 const MIN_HOURS = 0.25;
 const MAX_HOURS = 24;
 
@@ -57,10 +61,6 @@ const INITIAL_TOUCHED_FIELDS: EntryTouchedFields = {
   hours: false,
 };
 
-function normalizeWhitespace(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
-}
-
 function parseHours(value: string): number | null {
   const normalized = value.replace(',', '.').trim();
   if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
@@ -70,26 +70,27 @@ function parseHours(value: string): number | null {
   return parsed;
 }
 
-function validateEntryInput(form: EntryInput, hoursInput: string): EntryValidationErrors {
+function validateEntryInput(
+  form: EntryInput,
+  hoursInput: string,
+  projects: ProjectOption[],
+  tasks: TaskOption[],
+  projectsLoaded: boolean,
+  tasksLoaded: boolean,
+): EntryValidationErrors {
   const errors: EntryValidationErrors = {};
-  const normalizedProject = normalizeWhitespace(form.project);
-  const normalizedTask = normalizeWhitespace(form.task);
   const parsedHours = parseHours(hoursInput);
 
-  if (!normalizedProject) {
+  if (!form.project.trim()) {
     errors.project = i18n.t('timesheets:validation.projectRequired');
-  } else if (normalizedProject.length > MAX_PROJECT_LENGTH) {
-    errors.project = i18n.t('timesheets:validation.projectMaxLength', { max: MAX_PROJECT_LENGTH });
-  } else if (!/[\p{L}\p{N}]/u.test(normalizedProject)) {
-    errors.project = i18n.t('timesheets:validation.projectAlphanumeric');
+  } else if (projectsLoaded && !projects.some((p) => p.description === form.project)) {
+    errors.project = i18n.t('timesheets:validation.projectInvalid');
   }
 
-  if (!normalizedTask) {
+  if (!form.task.trim()) {
     errors.task = i18n.t('timesheets:validation.taskRequired');
-  } else if (normalizedTask.length > MAX_TASK_LENGTH) {
-    errors.task = i18n.t('timesheets:validation.taskMaxLength', { max: MAX_TASK_LENGTH });
-  } else if (!/[\p{L}\p{N}]/u.test(normalizedTask)) {
-    errors.task = i18n.t('timesheets:validation.taskAlphanumeric');
+  } else if (tasksLoaded && !tasks.some((t) => t.name === form.task)) {
+    errors.task = i18n.t('timesheets:validation.taskInvalid');
   }
 
   if (!hoursInput.trim()) {
@@ -118,14 +119,22 @@ export function EntryFormModal({
   const [form, setForm] = useState<EntryInput>(initial);
   const [hoursInput, setHoursInput] = useState(initial.hours === 0 ? '' : String(initial.hours));
   const [touched, setTouched] = useState<EntryTouchedFields>(INITIAL_TOUCHED_FIELDS);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<TaskOption[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksLoaded, setTasksLoaded] = useState(false);
+  const [tasksError, setTasksError] = useState<string | null>(null);
   const { mounted, slideY, backdropOpacity, animateClose } = useSlideUpModalAnimation({
     visible,
     screenHeight: SCREEN_HEIGHT,
   });
 
   const validationErrors = useMemo(
-    () => validateEntryInput(form, hoursInput),
-    [form, hoursInput]
+    () => validateEntryInput(form, hoursInput, projects, tasks, projectsLoaded, tasksLoaded),
+    [form, hoursInput, projects, tasks, projectsLoaded, tasksLoaded]
   );
   const isSaveDisabled = Object.keys(validationErrors).length > 0;
 
@@ -136,6 +145,71 @@ export function EntryFormModal({
       setTouched(INITIAL_TOUCHED_FIELDS);
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch projects sempre que o modal abre. Não cacheamos entre aberturas
+  // porque a lista pode mudar (projecto novo / encerrado); custo num localhost
+  // mock é desprezável e o real backend é igualmente snappy para esta lista.
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    setProjectsLoading(true);
+    setProjectsError(null);
+    setProjectsLoaded(false);
+    fetchProjects()
+      .then((list) => {
+        if (cancelled) return;
+        setProjects(list);
+        setProjectsLoaded(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setProjectsError(err instanceof Error ? err.message : t('form.projectLoadFailed'));
+      })
+      .finally(() => {
+        if (!cancelled) setProjectsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, t]);
+
+  // Tasks dependem do projecto seleccionado. Quando a lista de projectos
+  // ainda não chegou, ou o nome no form não bate com nenhum (edição com
+  // dados stale), não fazemos fetch — o utilizador é forçado a (re)escolher.
+  const selectedProject = useMemo(
+    () => projects.find((p) => p.description === form.project),
+    [projects, form.project],
+  );
+
+  useEffect(() => {
+    if (!visible) return;
+    if (!selectedProject) {
+      setTasks([]);
+      setTasksLoaded(false);
+      setTasksError(null);
+      return;
+    }
+    let cancelled = false;
+    setTasksLoading(true);
+    setTasksError(null);
+    setTasksLoaded(false);
+    fetchTasksForProject(selectedProject.code)
+      .then((list) => {
+        if (cancelled) return;
+        setTasks(list);
+        setTasksLoaded(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setTasksError(err instanceof Error ? err.message : t('form.taskLoadFailed'));
+      })
+      .finally(() => {
+        if (!cancelled) setTasksLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, selectedProject, t]);
 
   const handleClose = () => animateClose(onCancel);
 
@@ -149,8 +223,8 @@ export function EntryFormModal({
     if (parsedHours === null) return;
 
     const sanitized: EntryInput = {
-      project: normalizeWhitespace(form.project),
-      task: normalizeWhitespace(form.task),
+      project: form.project,
+      task: form.task,
       hours: Number(parsedHours.toFixed(2)),
       status: form.status,
     };
@@ -204,34 +278,49 @@ export function EntryFormModal({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.field}>
-              <TextField
+              <SelectField
                 label={t('form.project')}
                 value={form.project}
-                onChangeText={(v) => {
-                  setTouched((current) => ({ ...current, project: true }));
-                  setForm((f) => ({ ...f, project: v }));
+                placeholder={
+                  projectsLoading
+                    ? t('form.projectLoading')
+                    : t('form.projectPlaceholder')
+                }
+                options={projects.map((p) => p.description)}
+                onChange={(value) => {
+                  setTouched((current) => ({ ...current, project: true, task: true }));
+                  // Trocar de projecto invalida a tarefa anterior.
+                  setForm((f) => ({ ...f, project: value, task: '' }));
                 }}
-                onBlur={() => setTouched((current) => ({ ...current, project: true }))}
-                placeholder={t('form.projectPlaceholder')}
-                returnKeyType="next"
-                maxLength={MAX_PROJECT_LENGTH}
-                errorText={touched.project ? validationErrors.project : undefined}
+                errorText={
+                  touched.project
+                    ? projectsError ?? validationErrors.project
+                    : undefined
+                }
               />
             </View>
 
             <View style={styles.field}>
-              <TextField
+              <SelectField
                 label={t('form.task')}
                 value={form.task}
-                onChangeText={(v) => {
+                placeholder={
+                  !selectedProject
+                    ? t('form.taskPlaceholderDisabled')
+                    : tasksLoading
+                      ? t('form.taskLoading')
+                      : t('form.taskPlaceholder')
+                }
+                options={tasks.map((task) => task.name)}
+                onChange={(value) => {
                   setTouched((current) => ({ ...current, task: true }));
-                  setForm((f) => ({ ...f, task: v }));
+                  setForm((f) => ({ ...f, task: value }));
                 }}
-                onBlur={() => setTouched((current) => ({ ...current, task: true }))}
-                placeholder={t('form.taskPlaceholder')}
-                returnKeyType="next"
-                maxLength={MAX_TASK_LENGTH}
-                errorText={touched.task ? validationErrors.task : undefined}
+                errorText={
+                  touched.task
+                    ? tasksError ?? validationErrors.task
+                    : undefined
+                }
               />
             </View>
 

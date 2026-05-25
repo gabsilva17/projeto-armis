@@ -1,5 +1,7 @@
 import type { ToolDefinition, ToolHandler, ToolResult } from './types.js';
-import { add } from './expenseStore.js';
+import { expensesClient } from '../backend/expensesClient.js';
+import { expenseDtoToEntry, expenseEntryToDto } from '../backend/expensesAdapter.js';
+import { BackendError } from '../backend/httpClient.js';
 
 export const submitExpenseDefinition: ToolDefinition = {
   name: 'submitExpense',
@@ -23,7 +25,6 @@ export const submitExpenseDefinition: ToolDefinition = {
 
 export const submitExpenseHandler: ToolHandler = async (args): Promise<ToolResult> => {
   const {
-    id,
     date,
     productiveProject,
     partnerProject,
@@ -34,7 +35,6 @@ export const submitExpenseHandler: ToolHandler = async (args): Promise<ToolResul
     observations,
     expenseRepresentation,
   } = args as {
-    id?: string;
     date: string;
     productiveProject?: string;
     partnerProject?: string;
@@ -60,21 +60,42 @@ export const submitExpenseHandler: ToolHandler = async (args): Promise<ToolResul
     };
   }
 
-  const expense = add({
-    ...(id ? { id } : {}),
-    date,
-    productiveProject: productiveProject ?? 'Digital Hub',
-    partnerProject: partnerProject ?? 'None',
-    expenseType,
-    quantity,
-    unitValue,
-    currency,
-    observations: observations?.slice(0, 300) ?? '',
-    expenseRepresentation: expenseRepresentation ?? false,
-    status: 'draft',
-  });
+  try {
+    const dto = expenseEntryToDto({
+      id: '', // backend atribui
+      date,
+      productiveProject: productiveProject ?? 'Digital Hub',
+      partnerProject: partnerProject ?? 'None',
+      expenseType,
+      quantity,
+      unitValue,
+      currency,
+      observations: observations?.slice(0, 300) ?? '',
+      expenseRepresentation: expenseRepresentation ?? false,
+      status: 'draft',
+    });
 
-  return {
-    content: [{ type: 'text', text: JSON.stringify(expense, null, 2) }],
-  };
+    const res = await expensesClient.create(dto);
+    if (!res.content) {
+      return {
+        content: [{ type: 'text', text: `Error: ${res.message ?? 'Backend rejected the expense create.'}` }],
+        isError: true,
+      };
+    }
+
+    // O mock devolve o id real no payload. Caso falte (futuro contrato real),
+    // fazemos fallback para um placeholder; refresh do caller substituirá.
+    const id = res.id ?? `local-${Date.now()}`;
+    const created = expenseDtoToEntry({ ...dto, id });
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(created, null, 2) }],
+    };
+  } catch (err) {
+    const message = err instanceof BackendError ? err.message : 'Failed to submit expense';
+    return {
+      content: [{ type: 'text', text: `Error: ${message}` }],
+      isError: true,
+    };
+  }
 };

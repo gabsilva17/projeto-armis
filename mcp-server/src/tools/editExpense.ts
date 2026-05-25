@@ -1,5 +1,7 @@
 import type { ToolDefinition, ToolHandler, ToolResult } from './types.js';
-import { findById, update } from './expenseStore.js';
+import { expensesClient } from '../backend/expensesClient.js';
+import { expenseDtoToEntry, expenseEntryToDto } from '../backend/expensesAdapter.js';
+import { BackendError } from '../backend/httpClient.js';
 
 export const editExpenseDefinition: ToolDefinition = {
   name: 'editExpense',
@@ -38,21 +40,6 @@ export const editExpenseHandler: ToolHandler = async (args): Promise<ToolResult>
       expenseRepresentation?: boolean;
     };
 
-  const existing = findById(id);
-  if (!existing) {
-    return {
-      content: [{ type: 'text', text: `Error: expense entry "${id}" not found.` }],
-      isError: true,
-    };
-  }
-
-  if (existing.status === 'approved') {
-    return {
-      content: [{ type: 'text', text: `Error: cannot edit an approved entry ("${id}"). Only draft or pending entries can be edited.` }],
-      isError: true,
-    };
-  }
-
   if (quantity !== undefined && (quantity < 1 || quantity > 1000)) {
     return {
       content: [{ type: 'text', text: 'Error: quantity must be between 1 and 1000.' }],
@@ -67,20 +54,57 @@ export const editExpenseHandler: ToolHandler = async (args): Promise<ToolResult>
     };
   }
 
-  const fields: Record<string, unknown> = {};
-  if (date !== undefined) fields.date = date;
-  if (productiveProject !== undefined) fields.productiveProject = productiveProject;
-  if (partnerProject !== undefined) fields.partnerProject = partnerProject;
-  if (expenseType !== undefined) fields.expenseType = expenseType;
-  if (quantity !== undefined) fields.quantity = quantity;
-  if (unitValue !== undefined) fields.unitValue = unitValue;
-  if (currency !== undefined) fields.currency = currency;
-  if (observations !== undefined) fields.observations = observations.slice(0, 300);
-  if (expenseRepresentation !== undefined) fields.expenseRepresentation = expenseRepresentation;
+  try {
+    let existingDto;
+    try {
+      existingDto = await expensesClient.getById(id);
+    } catch (err) {
+      if (err instanceof BackendError && err.status === 404) {
+        return {
+          content: [{ type: 'text', text: `Error: expense entry "${id}" not found.` }],
+          isError: true,
+        };
+      }
+      throw err;
+    }
 
-  const updated = update(id, fields);
+    const existing = expenseDtoToEntry(existingDto);
+    if (existing.status === 'approved') {
+      return {
+        content: [{ type: 'text', text: `Error: cannot edit an approved entry ("${id}"). Only draft or pending entries can be edited.` }],
+        isError: true,
+      };
+    }
 
-  return {
-    content: [{ type: 'text', text: JSON.stringify(updated, null, 2) }],
-  };
+    const merged = {
+      ...existing,
+      ...(date !== undefined ? { date } : {}),
+      ...(productiveProject !== undefined ? { productiveProject } : {}),
+      ...(partnerProject !== undefined ? { partnerProject } : {}),
+      ...(expenseType !== undefined ? { expenseType } : {}),
+      ...(quantity !== undefined ? { quantity } : {}),
+      ...(unitValue !== undefined ? { unitValue } : {}),
+      ...(currency !== undefined ? { currency } : {}),
+      ...(observations !== undefined ? { observations: observations.slice(0, 300) } : {}),
+      ...(expenseRepresentation !== undefined ? { expenseRepresentation } : {}),
+    };
+
+    const res = await expensesClient.update(id, expenseEntryToDto(merged));
+    if (!res.content) {
+      return {
+        content: [{ type: 'text', text: `Error: ${res.message ?? 'Backend rejected the expense update.'}` }],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(merged, null, 2) }],
+    };
+  } catch (err) {
+    const message = err instanceof BackendError ? err.message : 'Failed to edit expense entry';
+    return {
+      content: [{ type: 'text', text: `Error: ${message}` }],
+      isError: true,
+    };
+  }
 };
