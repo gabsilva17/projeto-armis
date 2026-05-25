@@ -16,6 +16,10 @@
   "fallbackMessage": "I reviewed your last 15 days and noticed a few workdays with no entries. I can help you confirm if those gaps are expected and suggest what to log next. Do you want to review them together?",
   "deleteChat": "Delete chat",
   "chatOptions": "Chat options",
+  "offline": {
+    "title": "AI Companion offline",
+    "body": "Can't reach the AI service — chat and data tools are unavailable."
+  },
   "inputPlaceholder": "Chat with ARMINI…",
   "sendMessage": "Send message",
   "messageInput": "Message input",

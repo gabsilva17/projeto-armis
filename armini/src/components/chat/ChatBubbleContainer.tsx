@@ -3,8 +3,10 @@ import { ChatMessageList } from './ChatMessageList';
 import { ChatDropdownMenu } from './ChatDropdownMenu';
 import { Spacing, useTheme } from '@/src/theme';
 import { useChatStore } from '@/src/stores/useChatStore';
+import { useAiAvailabilityStore } from '@/src/stores/useAiAvailabilityStore';
 import { useChatAnimation } from '@/src/hooks/useChatAnimation';
 import { getChatGreeting } from '@/src/services/chat/chatService';
+import { useTranslation } from 'react-i18next';
 import { CaretDownIcon, DotsThreeVerticalIcon, WarningCircleIcon, XIcon } from 'phosphor-react-native';
 import { ROUTES } from '@/src/constants/app.constants';
 import { useFinancesStore } from '@/src/stores/useFinancesStore';
@@ -52,6 +54,8 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
   const [composerText, setComposerText] = useState('');
   const [errorExpanded, setErrorExpanded] = useState(false);
   const prevError = useRef(error);
+  const { t } = useTranslation('chat');
+  const aiOnline = useAiAvailabilityStore((s) => s.isOnline);
 
   // Colapsar automaticamente quando surge um novo erro
   useEffect(() => {
@@ -90,6 +94,9 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
   const handleOpen = (originX: number, originY: number) => {
     openChat(originX, originY);
     onOpenChange?.(true);
+    // Sondar imediatamente para o banner refletir o estado atual sem esperar
+    // pelo próximo poll.
+    void useAiAvailabilityStore.getState().check();
   };
 
   const handleClose = () => {
@@ -181,6 +188,25 @@ export const ChatBubbleContainer = forwardRef<ChatHandle, ChatBubbleContainerPro
 
           {/* Body */}
           <View style={styles.body}>
+            {aiOnline === false ? (
+              <View
+                style={[
+                  styles.offlineBanner,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+                accessibilityRole="alert"
+              >
+                <WarningCircleIcon size={16} color={colors.textPrimary} weight="fill" />
+                <View style={styles.offlineText}>
+                  <Text style={[styles.offlineTitle, { color: colors.textPrimary }]}>
+                    {t('offline.title')}
+                  </Text>
+                  <Text style={[styles.offlineBody, { color: colors.textSecondary }]}>
+                    {t('offline.body')}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
             {error ? (
               <View style={[styles.errorBanner, { backgroundColor: colors.surface, borderColor: colors.error }]}>
                 <TouchableOpacity
@@ -287,6 +313,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing[2],
+    marginHorizontal: Spacing[3],
+    marginTop: Spacing[2],
+    marginBottom: Spacing[1],
+    paddingVertical: Spacing[2],
+    paddingHorizontal: Spacing[3],
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+  },
+  offlineText: {
+    flex: 1,
+    gap: 2,
+  },
+  offlineTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  offlineBody: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   errorHeader: {
     flexDirection: 'row',

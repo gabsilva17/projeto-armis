@@ -1,9 +1,12 @@
 import '@/src/i18n';
 import i18n from '@/src/i18n';
 import { AlertProvider } from '@/src/contexts/AlertContext';
+import { Toast } from '@/src/components/ui/Toast';
 import { useSidebarStore } from '@/src/stores/useSidebarStore';
 import { useTimesheetsStore } from '@/src/stores/useTimesheetsStore';
 import { useFinancesStore } from '@/src/stores/useFinancesStore';
+import { useToastStore } from '@/src/stores/useToastStore';
+import { useAiAvailabilityStore } from '@/src/stores/useAiAvailabilityStore';
 import { Spacing, Typography } from '@/src/theme';
 import { themes } from '@/src/theme/colors';
 import { useThemeStore } from '@/src/stores/useThemeStore';
@@ -27,6 +30,16 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-rean
 configureReanimatedLogger({ level: ReanimatedLogLevel.warn, strict: false });
 
 SplashScreen.preventAutoHideAsync();
+
+const AI_RECHECK_INTERVAL_MS = 15_000;
+
+function showAiOfflineToast() {
+  useToastStore.getState().show({
+    title: i18n.t('common:toast.aiOffline.title'),
+    message: i18n.t('common:toast.aiOffline.body'),
+    variant: 'warning',
+  });
+}
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -108,12 +121,30 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-      // Hidratar stores de domínio com dados do MCP server (mock phase)
-      void useTimesheetsStore.getState().load();
-      void useFinancesStore.getState().load();
-    }
+    if (!fontsLoaded) return;
+    SplashScreen.hideAsync();
+    // Hidratar stores de domínio com dados do backend
+    void useTimesheetsStore.getState().load();
+    void useFinancesStore.getState().load();
+
+    // Boot ping ao AI Gateway. Mostrar toast imediatamente se offline; e voltar
+    // a sondar periodicamente para apanhar quedas em runtime sem ter de reabrir
+    // a app. Apenas mostra toast em transições para offline para não spammar.
+    let prevOnline: boolean | null = useAiAvailabilityStore.getState().isOnline;
+    const unsubAi = useAiAvailabilityStore.subscribe((state) => {
+      if (state.isOnline === false && prevOnline !== false) {
+        showAiOfflineToast();
+      }
+      prevOnline = state.isOnline;
+    });
+    void useAiAvailabilityStore.getState().check();
+    const intervalId = setInterval(() => {
+      void useAiAvailabilityStore.getState().check();
+    }, AI_RECHECK_INTERVAL_MS);
+    return () => {
+      unsubAi();
+      clearInterval(intervalId);
+    };
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
@@ -125,6 +156,7 @@ export default function RootLayout() {
           <AlertProvider>
             <AppStatusBar />
             <Stack screenOptions={{ headerShown: false }} />
+            <Toast />
           </AlertProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

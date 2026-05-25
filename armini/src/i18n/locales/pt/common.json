@@ -34,5 +34,11 @@
     "logout": "Terminar sessão",
     "closeProfile": "Fechar perfil",
     "version": "{{appName}} · v1.0"
+  },
+  "toast": {
+    "aiOffline": {
+      "title": "AI Companion indisponível",
+      "body": "Timesheets e despesas continuam a funcionar."
+    }
   }
 }

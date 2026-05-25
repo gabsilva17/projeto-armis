@@ -99,9 +99,13 @@ Cada store é um ficheiro em `src/stores/`, hook-based, sem Redux/Context pesado
 | `useQuickActionsStore` | `actions[]` (QuickAction) | AsyncStorage |
 | `useLanguageStore` | `language` ('en' \| 'pt') | AsyncStorage |
 | `useNavBarStore` | `middleTabs[]` (NavTabId) | AsyncStorage |
+| `useToastStore` | `queue[]` (ToastItem) | Não |
+| `useAiAvailabilityStore` | `isOnline`, `lastCheckedAt`, `isChecking` | Não |
 
 `useTimesheetsStore` expõe `getMonthData(year, month)` que deriva `MonthSummary` do estado.
 `useNavBarStore` gere quais tabs opcionais aparecem na bottom bar e a sua ordem. Home e More são fixos (primeiro e último). Máximo de 5 tabs no total.
+`useToastStore` enfileira notificações não-bloqueantes. UI consome via `<Toast />` (em `src/components/ui/Toast.tsx`) montado uma vez em `app/_layout.tsx`; auto-dismiss a ~4s e a queue mostra uma mensagem de cada vez. Slide-in via Reanimated `entering`/`exiting` (`FadeInUp`/`FadeOutDown`), posicionado no fundo do ecrã para não interferir com a TopBar nem com o chat modal.
+`useAiAvailabilityStore` faz ping ao AI Gateway (`tools/list`, timeout 3s) no boot e a cada 15s. `_layout.tsx` subscreve transições para `false` e dispara o toast offline. `ChatBubbleContainer` exibe um banner sticky enquanto `isOnline === false`, e refaz `check()` ao abrir o chat para mostrar o estado fresco.
 
 ## Internacionalização (i18n)
 
