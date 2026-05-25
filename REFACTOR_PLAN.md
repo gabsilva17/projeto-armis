@@ -158,6 +158,134 @@ Each phase below is committable independently and self-contained. Resume in a fr
 
 ## Out of scope for this plan
 
-- Renaming `mcp-server/` to `ai-gateway/` and carving out a true MCP server — tracked in user memory `project_architectural_split_deferred.md`.
 - Wiring real auth (claim headers) into the backend client beyond a stub — depends on the broader auth work.
 - Replacing the mock with the real .NET backend — that's just an env-var swap when the time comes.
+
+---
+
+# Architecture Refactor Plan — AI Gateway ↔ MCP Split
+
+Picks up where Phase 6 ended. The remaining structural debt: `mcp-server/` is doing two distinct jobs (LLM orchestration + MCP tool host) in one process. Result: any outage takes both down, the boot ping conflates "AI is down" with "tools are down", and the folder is misnamed.
+
+Tracked in user memory `project_architectural_split_deferred.md` until Phase 7 lands, at which point that memory should be deleted.
+
+## Decisions locked in (session of 2026-05-25)
+
+- **Final shape:** three local processes — `armini/`, `ai-gateway/`, `mcp/` — plus `mock-backend/`. AI Gateway is the only consumer of MCP. Mobile speaks only to AI Gateway (chat) and mock-backend (data).
+- **Naming:** `mcp-server/` → `ai-gateway/`. New sibling `mcp/` for the true MCP server. Renamed in the same phase as the carve-out to avoid an awkward intermediate state where `mcp-server/` no longer exposes MCP methods.
+- **Mobile-facing JSON-RPC surface does not change.** Mobile keeps calling `chat/send`, `chat/bootstrap`, `chat/scan`. It never speaks to `mcp/` directly.
+- **Tool-availability signal:** `ChatSendResult` / `BootstrapResult` / `ScanResult` gain `toolsAvailable: boolean`. Mobile drives the in-chat banner from that flag (plus a cheap `chat/health` probe for cold-state) — not from a separate MCP ping.
+- **Degradation policy:** when MCP is unreachable, AI Gateway still calls the LLM but omits the tool catalog and prepends a soft system instruction telling the model to answer from general knowledge only and refuse data actions.
+
+## Real-architecture quirks to preserve
+
+- All LLM calls stay server-side. The mobile app never holds an LLM API key (`armini/CLAUDE.md` § Restrições importantes).
+- `BACKEND_USERNAME` (used by `getEmployeeInfo` because swagger has no `/me`) follows the tools, so it moves to `mcp/`.
+- Adapters (`imputationsAdapter`, `expensesAdapter`) belong with the tools — they translate DTOs↔domain at the MCP boundary. They move to `mcp/`.
+- Provider-agnostic LLM swap (`LLM_PROVIDER=anthropic|openai`) stays exactly as is — just lives in `ai-gateway/`.
+
+---
+
+## Phase 7 — Carve out `mcp/` + rename `mcp-server/` → `ai-gateway/`
+
+**Goal:** clean folder names and a true MCP server in its own process. AI Gateway becomes an MCP client over HTTP. No user-visible behavior change for the happy path.
+
+**Filesystem moves:**
+- `mcp-server/` → `ai-gateway/` (rename whole folder). Update `package.json` "name", `tsconfig`, scripts in monorepo docs.
+- New sibling `mcp/` — Node + TypeScript + Express + JSON-RPC, same stack.
+- Move from `ai-gateway/src/` → `mcp/src/`:
+  - `tools/*` (10 handlers + `registry.ts` + `types.ts`)
+  - `backend/*` (httpClient, clients, adapters, `projectTaskResolver`, types)
+  - whatever utils those imports drag along
+- Keep in `ai-gateway/src/`:
+  - `orchestrator/*`, `providers/*`, `transport/*`, `config/*`, `utils/*`
+
+**New module — `ai-gateway/src/mcpClient/`:**
+- Thin JSON-RPC-over-fetch client. Exposes `listTools()` and `callTool(name, args)`. Replaces the in-process `ToolRegistry` reference inside `ChatOrchestrator`.
+- Same shape as `mock-backend`'s clients on the mobile side — small, focused, easy to swap.
+
+**Endpoints after Phase 7:**
+- `mcp/` — POST `/mcp` on port 3003 (env `MCP_PORT`). Methods: `tools/list`, `tools/call`. Accepts but ignores `x-api-key` + `x-corehub-claims-*`.
+- `ai-gateway/` — POST `/mcp` on port 3001 (kept). Methods: `chat/send`, `chat/bootstrap`, `chat/scan`. **Removes** `tools/list` and `tools/call` — those live on `mcp/` now.
+
+**Env vars:**
+- `ai-gateway/.env`: keep `LLM_PROVIDER` + provider keys. Add `MCP_URL=http://localhost:3003`. Drop `BACKEND_URL` (it moves to `mcp/`).
+- `mcp/.env`: `BACKEND_URL=http://localhost:3002`, `BACKEND_USERNAME`, `MCP_PORT=3003`.
+- `armini/`: `EXPO_PUBLIC_MCP_URL` → `EXPO_PUBLIC_AI_GATEWAY_URL`. Rename `MCP_CONFIG`/`resolveMcpBaseUrl` in `src/constants/llm.constants.ts` to `AI_GATEWAY_CONFIG`/`resolveAiGatewayBaseUrl`. Update `src/services/api/mcp.ts` accordingly (file itself can stay named `mcp.ts` since the JSON-RPC envelope is still MCP-shaped, but rename to `aiGateway.ts` is preferable for clarity).
+
+**Wiring:**
+- `ChatOrchestrator` constructor takes an `McpClient` (not a `ToolRegistry`). Tool catalog is fetched on each `chat/send` for now (no caching — optimize later if needed).
+- The agentic loop calls `mcpClient.callTool(name, args)` instead of `toolRegistry.call(name, args)`. Same return shape.
+- If `mcpClient.listTools()` throws in this phase, `chat/send` fails with a normal JSON-RPC error. Graceful fallback is **Phase 8**.
+
+**Docs:**
+- New `mcp/README.md` — endpoint table, dev commands, `BACKEND_URL` note.
+- `ai-gateway/README.md` (renamed from `mcp-server/`) — chat methods only, `MCP_URL` note.
+- `armini/CLAUDE.md` § MCP Server → § AI Gateway. Diagram updated. References to `mcp-server/` swapped throughout.
+- Update top-level `README.md` (added in Phase 6) — four-process diagram.
+
+**Acceptance:**
+- `cd mcp && npm run dev` starts on 3003. `curl -X POST http://localhost:3003/mcp -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'` returns the 10-tool catalog.
+- `cd ai-gateway && npm run dev` starts on 3001. Mobile chat works end-to-end (mobile → AI Gateway → MCP → mock-backend).
+- POSTing `tools/list` to AI Gateway returns method-not-found (only `chat/*` lives there).
+- `npx tsc --noEmit` clean in `ai-gateway/`, `mcp/`, `mock-backend/`, and `armini/`.
+- Delete user memory `project_architectural_split_deferred.md` — it's done.
+
+---
+
+## Phase 8 — Graceful MCP outage in AI Gateway
+
+**Goal:** when MCP is unreachable from AI Gateway, chat still answers without tools. Mobile UI explains what's degraded.
+
+**AI Gateway:**
+- `mcpClient.listTools()` wraps a 2 s timeout and returns `null` on failure (don't throw).
+- `ChatOrchestrator.handleChat()`:
+  - Fetches the tool catalog. If `null`, run the agentic loop with `tools: undefined` and prepend a soft system instruction:
+    > *"The tool layer is currently unavailable. Answer from general knowledge only. Do not promise to read, modify, or persist any data. If the user asks for an action, tell them you can't do it right now and ask them to try again later."*
+  - All result shapes gain a new field: `toolsAvailable: boolean`. False when the catalog couldn't be fetched.
+- `chat/bootstrap` and `chat/scan` get the same flag for consistency.
+- New method `chat/health` — returns `{ aiGateway: 'ok', mcp: 'ok' | 'offline' }`. Cheap (no LLM call). Pings MCP with a short timeout.
+
+**Mobile:**
+- `useAiAvailabilityStore` is rebuilt around `chat/health`:
+  - Fields: `aiGateway: 'unknown' | 'online' | 'offline'`, `mcp: 'unknown' | 'online' | 'offline'`.
+  - `check()` calls `chat/health`. If the AI Gateway itself is unreachable → `aiGateway: 'offline'`, `mcp: 'unknown'`. Else map the response.
+  - Poll cadence unchanged (boot + 15 s).
+- Chat banner copy splits into two states (driven by store fields):
+  - `aiGateway === 'offline'` → *"AI Companion offline — chat is unavailable. Timesheets and expenses still work."* (same as today's offline message — rename the i18n key but keep the wording).
+  - `aiGateway === 'online' && mcp === 'offline'` → *"Limited mode — chat works but can't read or modify your data."*
+- Boot toast follows the same logic — only one toast per transition into a degraded state.
+
+**i18n:**
+- Rename `chat.offline.*` → `chat.aiGatewayOffline.*` (or keep the existing key and add `chat.mcpOffline.*`). Add `toast.mcpOffline.*` similarly.
+
+**Acceptance:**
+- Kill `mcp/`, leave `ai-gateway/` and `mock-backend/` running. Open the chat → "Limited mode" banner. Send a message → LLM responds in plain text, no tool calls, refuses any action-y request.
+- Restart `mcp/`. Within one health-poll tick (≤15 s), banner clears. Subsequent messages can run tools again.
+- Kill `ai-gateway/`. Open the chat → "AI Companion offline" banner. Sending a message produces the existing error path.
+- `npx tsc --noEmit` clean in all four projects.
+
+---
+
+## Phase 9 — Cleanup, docs, dev story
+
+**Goal:** a new contributor can clone the repo and get all four processes running without spelunking through commits.
+
+- Top-level `package.json` with a `concurrently`-based `dev` script that starts `mock-backend`, `mcp`, and `ai-gateway` in parallel. Document the mobile (`armini/`) start separately because Metro wants its own terminal. (If `concurrently` on Windows turns out flaky, document the four-terminal flow instead — don't fight the platform.)
+- Top-level `README.md` — final four-box diagram, port table (3001 AI Gateway, 3002 mock-backend, 3003 MCP, Metro 8081), env-var map, "what owns what" summary.
+- `mcp/README.md` and `ai-gateway/README.md` finalized with full endpoint tables and example curls.
+- `armini/CLAUDE.md` — full architecture redraw + updated diagram + drop the old "MCP Server" section in favor of "AI Gateway" + "MCP tool host" sections.
+- Run `npx tsc --noEmit` in all four projects.
+
+**Acceptance:**
+- One command at the repo root brings up the three Node services; one command in `armini/` starts Metro. Chat works, data works, killing any single process degrades exactly as Phase 8 advertises.
+- Diagram in `README.md` matches the running process layout.
+
+---
+
+## Out of scope for the split refactor
+
+- True MCP-protocol compliance (resources, prompts, JSON-RPC error code conventions beyond what the current transport does). Today's `mcp/` is "MCP-shaped" — fine for the in-house client, formalize later if a third-party MCP client ever connects.
+- Caching the tool catalog in AI Gateway. Phase 7/8 fetches it on every chat call. Profile before optimizing.
+- Splitting `chat/scan` (image scan) into its own surface. It stays on AI Gateway because it's still an LLM call.
+- Auth on `mcp/`. Still accepts but ignores `x-api-key` / `x-corehub-claims-*` headers — same stub posture as `mock-backend`.
