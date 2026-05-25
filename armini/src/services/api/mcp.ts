@@ -53,6 +53,7 @@ export async function mcpCall<T>(
 
     return data.result as T;
   } catch (err) {
+    console.error(`[mcp] ${method} failed (url=${BASE_URL}):`, err);
     if (err instanceof ApiError) throw err;
     if (err instanceof Error && err.name === 'AbortError') {
       throw new ApiError(408, 'MCP request timed out');

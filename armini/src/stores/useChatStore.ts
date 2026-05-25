@@ -60,7 +60,8 @@ export const useChatStore = create<ChatStore>()(
             hasBootstrappedSession: true,
             isLoading: false,
           }));
-        } catch {
+        } catch (err) {
+          console.warn('[chat] bootstrap failed, using fallback message:', err);
           const fallback = getStartupFallbackMessage();
           set((s) => ({
             messages: s.messages.length === 0 ? [fallback] : s.messages,
